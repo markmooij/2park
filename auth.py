@@ -6,9 +6,12 @@ Simple bearer token authentication
 import os
 from typing import Optional
 
+from dotenv import load_dotenv
 from fastapi import Header
 
 from errors import InvalidTokenException
+
+load_dotenv()
 
 
 def get_api_token() -> str:

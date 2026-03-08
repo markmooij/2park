@@ -6,6 +6,10 @@ Provides RESTful endpoints for parking management
 import logging
 import os
 import uuid
+
+from dotenv import load_dotenv
+
+load_dotenv()
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -359,7 +363,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "api:app",
         host="0.0.0.0",
-        port=8000,
+        port=8090,
         reload=True,
         log_level="info",
     )

@@ -110,15 +110,80 @@ class TwoParkScraper:
                 timeout=self._get_timeout_ms("navigation"),
             )
 
-            await self.page.wait_for_selector(
-                "#login_email", timeout=self._get_timeout_ms("selector")
-            )
-            await self.page.fill("#login_email", self.email)
-            await self.page.fill("#login_password", self.password)
-            await self.page.click('button[type="submit"]')
+            # Try multiple possible selectors for email field
+            email_selectors = [
+                "#login_email",
+                "#email",
+                "input[name='email']",
+                "input[name='Email']",
+                "input[type='email']",
+                ".form-email",
+            ]
+            password_selectors = [
+                "#login_password",
+                "#password",
+                "input[name='password']",
+                "input[name='Password']",
+                "input[type='password']",
+                ".form-password",
+            ]
+
+            email_selector = None
+            for selector in email_selectors:
+                if await self.page.query_selector(selector):
+                    email_selector = selector
+                    break
+
+            password_selector = None
+            for selector in password_selectors:
+                if await self.page.query_selector(selector):
+                    password_selector = selector
+                    break
+
+            if not email_selector or not password_selector:
+                logger.error(
+                    f"Could not find login form. Email selector: {email_selector}, Password selector: {password_selector}"
+                )
+                # Take a screenshot for debugging
+                try:
+                    await self.page.screenshot(
+                        path="/tmp/2park_login_debug.png"
+                    )
+                    logger.info("Screenshot saved to /tmp/2park_login_debug.png")
+                except Exception:
+                    pass
+                raise LoginFailedException(
+                    "Could not find login form elements. Website structure may have changed."
+                )
+
+            logger.info(f"Found email selector: {email_selector}, password selector: {password_selector}")
+            await self.page.fill(email_selector, self.email)
+            await self.page.fill(password_selector, self.password)
+
+            # Try multiple submit button selectors
+            submit_selectors = [
+                'button[type="submit"]',
+                'input[type="submit"]',
+                '.btn-login',
+                '.login-button',
+                'button.login',
+            ]
+            submit_button = None
+            for selector in submit_selectors:
+                submit_button = await self.page.query_selector(selector)
+                if submit_button:
+                    logger.info(f"Found submit button: {selector}")
+                    break
+
+            if not submit_button:
+                raise LoginFailedException("Could not find submit button")
+
+            await submit_button.click()
 
             # Wait for navigation
             await self.page.wait_for_load_state("networkidle", timeout=30000)
+            # Give page a moment to fully render
+            await self.page.wait_for_timeout(1000)
 
             # Check if login was successful by looking for the dashboard
             # If we're still on the login page, login failed
@@ -130,7 +195,7 @@ class TwoParkScraper:
                 )
                 error_message = "Invalid credentials"
                 if error_element:
-                    error_message = await error_element.inner_text()
+                    error_message = await error_element.text_content() or "Invalid credentials"
                 raise LoginFailedException(f"Login failed: {error_message}")
 
             logger.info("Login successful")
@@ -149,12 +214,13 @@ class TwoParkScraper:
         try:
             logger.info("Fetching account balance...")
 
-            # Navigate to dashboard if not already there
-            if "dashboard" not in self.page.url.lower():
+            # Navigate to dashboard if still on login page
+            if "login" in self.page.url.lower():
                 await self.page.goto(
                     "https://mijn.2park.nl/dashboard",
                     timeout=self._get_timeout_ms("navigation"),
                 )
+                await self.page.wait_for_timeout(1000)
 
             # Wait for balance element
             await self.page.wait_for_selector(
@@ -292,55 +358,57 @@ class TwoParkScraper:
                         f"Active booking already exists for {license_plate}"
                     )
 
-            # Navigate to new booking page
+            # Navigate to dashboard first
             await self.page.goto(
-                "https://mijn.2park.nl/parkings/new",
+                "https://mijn.2park.nl/",
                 timeout=self._get_timeout_ms("navigation"),
             )
+            await self.page.wait_for_timeout(1000)
 
-            # Wait for the form
+            # Click the "+Nieuwe parkeeractie" button to open the form
+            new_button = await self.page.query_selector(
+                "button:has-text('+Nieuwe parkeeractie'), button:has-text('Nieuwe parkeeractie')"
+            )
+            if not new_button:
+                raise ScrapeErrorException("Could not find 'Nieuwe parkeeractie' button")
+
+            await new_button.click()
+            await self.page.wait_for_timeout(2000)
+
+            # Wait for the form to appear
             await self.page.wait_for_selector(
-                "#license_plate, input[name='license_plate']",
+                "#newParkingActions_license_plate, input[name*='license_plate']",
                 timeout=self._get_timeout_ms("selector"),
             )
 
             # Fill in license plate
             license_plate_input = await self.page.query_selector(
-                "#license_plate, input[name='license_plate']"
+                "#newParkingActions_license_plate, input[name*='license_plate']"
             )
             if license_plate_input:
                 await license_plate_input.fill(license_plate)
+            else:
+                raise ScrapeErrorException("License plate input not found")
 
-            # Fill in start time
-            # Note: This depends on the actual form structure on 2park.nl
-            # You may need to adjust selectors based on the actual website
-            start_time_input = await self.page.query_selector(
-                "#start_time, input[name='start_time'], .start-time-input"
-            )
+            # Fill in start time (use "now" by selecting the current time option)
+            # The form uses a time picker - find and select start time
+            start_time_selector = "#newParkingActions_start_time, input[name*='start_time'], .start-time"
+            start_time_input = await self.page.query_selector(start_time_selector)
             if start_time_input:
                 # Format time as expected by the form
                 formatted_start = start_time.strftime("%Y-%m-%dT%H:%M")
                 await start_time_input.fill(formatted_start)
 
-            # Fill in end time or duration
+            # Fill in duration (in minutes)
             duration_minutes = int((end_time - start_time).total_seconds() / 60)
-            duration_input = await self.page.query_selector(
-                "#duration, input[name='duration'], .duration-input"
-            )
+            duration_selector = "#newParkingActions_duration_minutes, input[name*='duration'], .duration"
+            duration_input = await self.page.query_selector(duration_selector)
             if duration_input:
                 await duration_input.fill(str(duration_minutes))
-            else:
-                # Try end time input if duration not available
-                end_time_input = await self.page.query_selector(
-                    "#end_time, input[name='end_time'], .end-time-input"
-                )
-                if end_time_input:
-                    formatted_end = end_time.strftime("%Y-%m-%dT%H:%M")
-                    await end_time_input.fill(formatted_end)
 
             # Submit the form
             submit_button = await self.page.query_selector(
-                'button[type="submit"], .submit-booking, .create-booking'
+                'button[type="submit"], button:has-text("Reserveren"), button:has-text("Bevestigen")'
             )
             if submit_button:
                 await submit_button.click()

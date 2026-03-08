@@ -19,6 +19,7 @@ def validate_license_plate(license_plate: str) -> str:
     - Current EU format: XX-XX-X or XX-XXX
     - Historic format: XX-XX-XX
     - Temporary format: XX-XX-??
+    - KV/KVX format: DD-LLLL (2 digits + 4 letters, e.g., 51PXPN)
     """
     # Remove whitespace
     license_plate = license_plate.strip().upper()
@@ -37,6 +38,8 @@ def validate_license_plate(license_plate: str) -> str:
         r"^[A-Z]{2}-[A-Z]{3}-[0-9]{2}$",
         # Temporary format
         r"^[A-Z]{2}-[A-Z]{2}-[\?]{2}$",
+        # KV/KVX format (2 digits + 4 letters, e.g., 51PXPN or 51-PXPN)
+        r"^[0-9]{2}-[A-Z]{4}$",
         # Simple format without dashes
         r"^[A-Z]{2}[0-9]{3}[A-Z]{2}$",
     ]
@@ -47,6 +50,10 @@ def validate_license_plate(license_plate: str) -> str:
     if re.match(r"^[A-Z]{2}[0-9]{3}[A-Z]{2}$", plate_no_dashes):
         return license_plate  # Return original (may have dashes, validation passed on no-dashes version)
 
+    # Check KV/KVX format without dashes (DDLLLL, e.g., 51PXPN)
+    if re.match(r"^[0-9]{2}[A-Z]{4}$", plate_no_dashes):
+        return license_plate
+
     # Validate with dashes against specific patterns
 
     for pattern in patterns:
@@ -55,7 +62,7 @@ def validate_license_plate(license_plate: str) -> str:
 
     raise ValueError(
         f"Invalid license plate format: {license_plate}. "
-        f"Use format like 'AB-12-CD' or 'AB123CD'"
+        f"Use format like 'AB-12-CD', 'AB123CD', or '51-PXPN'"
     )
 
 

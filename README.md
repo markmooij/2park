@@ -100,7 +100,7 @@ The 2Park API provides a stateless REST interface for parking automation.
 ### Example: Create Booking
 
 ```bash
-curl -X POST "http://localhost:8000/api/bookings" \
+curl -X POST "http://localhost:8090/api/bookings" \
   -H "Authorization: Bearer your-token" \
   -H "Content-Type: application/json" \
   -d '{
