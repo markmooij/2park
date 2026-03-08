@@ -6,7 +6,7 @@ Simple bearer token authentication
 import os
 from typing import Optional
 
-from fastapi import Header, HTTPException
+from fastapi import Header
 
 from errors import InvalidTokenException
 

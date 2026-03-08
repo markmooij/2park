@@ -4,15 +4,18 @@ Complete REST API and automated tool for managing parking reservations on [2park
 
 ## Features
 
-### REST API (New!)
-- 🚀 **Stateless REST API** for parking automation
+### REST API
+- 🚀 **REST API** for parking automation with FastAPI
 - 🔐 **Bearer token authentication**
 - 📊 **Get account balance** via API endpoint
 - ➕ **Create parking bookings** programmatically
 - ⏱️ **Extend active bookings** with additional time
 - ❌ **Cancel bookings** via API
-- 🔄 **Standardized error responses**
+- 🔄 **Standardized error responses** with error codes
 - 📖 **Complete API documentation** with examples
+- ⚖️ **Rate limiting** to prevent abuse
+- 🆔 **License plate validation** for Dutch formats
+- ⏱️ **Configurable timeouts** for browser operations
 
 ### CLI/Scraper
 - 🚗 View active parking reservations with details (name, license plate, start/end times)
@@ -168,14 +171,24 @@ The script will:
 
 ### Environment Variables
 
-**For API:**
-- `TWOPARK_EMAIL` - Your 2Park account email (required)
-- `TWOPARK_PASSWORD` - Your 2Park account password (required)
-- `API_TOKEN` - Bearer token for API authentication (required for API)
+**Required:**
+- `TWOPARK_EMAIL` - Your 2Park account email
+- `TWOPARK_PASSWORD` - Your 2Park account password
+- `API_TOKEN` - Bearer token for API authentication
 
-**For CLI:**
-- `TWOPARK_EMAIL` - Your 2Park account email (required)
-- `TWOPARK_PASSWORD` - Your 2Park account password (required)
+**Optional (Rate Limiting):**
+- `RATE_LIMIT_REQUESTS` - Max requests per window (default: 10)
+- `RATE_LIMIT_WINDOW_SECONDS` - Time window in seconds (default: 60)
+
+**Optional (Timeouts - seconds, range 10-300):**
+- `BROWSER_TIMEOUT` - Browser navigation timeout (default: 30)
+- `NAVIGATION_TIMEOUT` - Page navigation timeout (default: 30)
+- `SELECTOR_TIMEOUT` - Selector waiting timeout (default: 10)
+- `SESSION_CACHE_TTL` - Session cache TTL in seconds (default: 300)
+
+**Optional (Logging):**
+- `LOG_LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
+- `LOG_FILE` - Log file path (default: logs/app.log)
 
 ### API Server Settings
 
@@ -253,8 +266,25 @@ ACCOUNT BALANCE
   ```bash
   openssl rand -hex 32
   ```
+- **Rate Limiting:** Configure via environment variables to prevent abuse
 - **Production:** Use HTTPS and consider rate limiting
 - **Access Control:** Don't expose the API directly to the internet
+
+## ⚠️ Important Disclaimer
+
+This project is a **personal hobby project** created for educational purposes.
+
+- This tool automates interaction with [2park.nl](https://mijn.2park.nl) using browser automation
+- **Use at your own risk** - Always check 2park.nl's Terms of Service
+- The author is **not affiliated** with 2park.nl
+- **Respect rate limits** - Don't abuse this tool
+- This is **not a production-ready solution** - Handle with care
+
+By using this software, you agree to:
+1. Review and comply with 2park.nl's Terms of Service
+2. Use this tool responsibly and ethically
+3. Not use this for commercial purposes without proper authorization
+4. Accept responsibility for any consequences of using this software
 
 ## Troubleshooting
 
@@ -267,9 +297,22 @@ Try these solutions:
 
 ### Timeout errors
 
-- Increase timeout values in the script (default is 30000ms for navigation, 10000ms for selectors)
+- Increase timeout values via environment variables (`BROWSER_TIMEOUT`, `NAVIGATION_TIMEOUT`, `SELECTOR_TIMEOUT`)
 - Check your internet connection
 - The website might be slow or down
+
+### Invalid license plate format
+
+The API validates Dutch license plate formats. Supported formats include:
+- Current EU format: `AB-12-CD`, `1-AB-23`
+- Historic format: `XX-XX-XX`
+- Use format like `AB-12-CD` or `1-AB-23`
+
+### Rate limit exceeded
+
+If you see rate limit errors:
+- Wait before retrying (check `X-RateLimit-Reset` header)
+- Increase `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_SECONDS` environment variables
 
 ### Missing credentials error
 
@@ -297,24 +340,41 @@ This handles credentials, browser installation checks, and proper error handling
 ### API Structure
 
 ```
-api.py           # FastAPI application with endpoints
-scraper.py       # Stateless scraper for browser automation
-models.py        # Pydantic models for requests/responses
-errors.py        # Error codes and exception handling
-auth.py          # Bearer token authentication
-main.py          # CLI script (original functionality)
+api.py              # FastAPI application with endpoints
+scraper.py          # Stateless scraper for browser automation
+models.py           # Pydantic models for requests/responses
+errors.py           # Error codes and exception handling
+auth.py             # Bearer token authentication
+rate_limit.py       # Rate limiting middleware
+config.py           # Configuration loader (future)
+main.py             # CLI script (original functionality)
 ```
 
 ### Stateless Design
 
 Each API request:
 1. Authenticates the bearer token
-2. Launches a new browser session
+2. Launches a new browser session (or reuses cached session)
 3. Logs in to 2Park
 4. Performs the requested operation
 5. Cleans up all resources
 
 This ensures no memory leaks and horizontal scalability.
+
+### Session Caching
+
+For better performance, the API can cache login sessions:
+- Default TTL: 300 seconds (configurable via `SESSION_CACHE_TTL`)
+- Reduces request time by reusing existing logins
+- Automatic cleanup on session failure
+
+### Rate Limiting
+
+API requests are rate-limited by client IP:
+- Default: 10 requests per 60 seconds
+- Configurable via `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_SECONDS`
+- Returns 429 status code when limit exceeded
+- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
 
 ### CLI Structure
 
@@ -331,16 +391,19 @@ The CLI uses the `TwoParkChecker` class:
 
 ✅ **Stateless API architecture**  
 ✅ **Bearer token authentication**  
+✅ **License plate validation** for Dutch formats  
+✅ **Rate limiting middleware**  
 ✅ **Standardized error responses** with error codes  
+✅ **Configurable timeouts** via environment variables  
 ✅ **Proper error handling** with try-catch blocks  
-✅ **Comprehensive logging** for debugging  
+✅ **Comprehensive logging** with request IDs  
 ✅ **Environment variables** for sensitive data  
 ✅ **Type hints** throughout codebase  
 ✅ **Pydantic models** for validation  
 ✅ **Browser cleanup** in context managers  
-✅ **Timeouts** on all async operations  
 ✅ **RESTful API design**  
 ✅ **OpenAPI documentation** (Swagger/ReDoc)  
+✅ **CORS middleware** for Home Assistant  
 ✅ **Class-based organization**  
 ✅ **Graceful degradation**  
 
@@ -353,13 +416,17 @@ The CLI uses the `TwoParkChecker` class:
 ├── models.py           # Pydantic request/response models
 ├── errors.py           # Error codes and exceptions
 ├── auth.py             # Authentication middleware
+├── rate_limit.py       # Rate limiting middleware
 ├── main.py             # CLI checker script
 ├── run.sh              # Convenience script for CLI
 ├── API.md              # Complete API documentation
 ├── README.md           # This file
+├── ROADMAP.md          # Project roadmap and future plans
 ├── CHANGES.md          # Change log and migration guide
 ├── QUICKSTART.md       # Quick reference guide
 ├── .env.example        # Environment variable template
+├── Dockerfile          # Docker image definition
+├── docker-compose.yml  # Docker Compose configuration
 └── pyproject.toml      # Python dependencies
 ```
 
@@ -368,6 +435,123 @@ The CLI uses the `TwoParkChecker` class:
 - **[API.md](API.md)** - Complete API documentation with examples
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick reference for CLI usage
 - **[CHANGES.md](CHANGES.md)** - Migration guide from old version
+
+## Testing
+
+### Running Unit Tests
+
+Install dev dependencies and run tests:
+
+```bash
+# Install dev dependencies
+uv sync --extra dev
+
+# Or install pytest directly
+uv add --dev pytest
+
+# Run all tests
+pytest tests/
+
+# Run with verbose output
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_license_plate.py
+```
+
+### Test Coverage
+
+| Test File | Tests | Status |
+|-----------|-------|--------|
+| `test_license_plate.py` | 4 | ✅ Passing |
+| `test_time_parsing.py` | 3 | ✅ Passing |
+| **Total** | **7** | **✅ Passing** |
+
+### Integration Tests
+
+The `test_api.py` script tests the running API server. Start the server first:
+
+```bash
+# Start the API server
+python api.py
+
+# In another terminal, run integration tests
+python test_api.py
+```
+
+**Note:** Be careful with booking operations - they will create real bookings on your 2Park account!
+
+---
+
+## Docker Deployment
+
+### Quick Start with Docker Compose
+
+```bash
+# Copy environment example
+cp .env.example .env
+
+# Edit .env with your credentials
+nano .env
+
+# Build and run
+docker-compose up -d
+```
+
+### Environment Variables
+
+```bash
+# Required
+TWOPARK_EMAIL=your-email@example.com
+TWOPARK_PASSWORD=your-password
+API_TOKEN=your-secure-token
+
+# Optional (defaults shown)
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_WINDOW_SECONDS=60
+BROWSER_TIMEOUT=30
+NAVIGATION_TIMEOUT=30
+SELECTOR_TIMEOUT=10
+SESSION_CACHE_TTL=300
+LOG_LEVEL=INFO
+```
+
+### Accessing the API
+
+Once running, the API is available at `http://localhost:8080`:
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Get balance
+curl -H "Authorization: Bearer your-token" \
+  http://localhost:8080/api/account/balance
+```
+
+### Viewing Logs
+
+```bash
+# View container logs
+docker logs -f 2park-api
+```
+
+### Stop/Start
+
+```bash
+# Stop
+docker-compose down
+
+# Start
+docker-compose up -d
+
+# Restart
+docker-compose restart
+```
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and improvements.
 
 ## License
 

@@ -5,7 +5,8 @@ Handles browser sessions for individual operations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from dateutil import parser as date_parser
@@ -35,6 +36,11 @@ class TwoParkScraper:
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
         self.playwright = None
+        self.timeouts = {
+            "browser": int(os.getenv("BROWSER_TIMEOUT", "30")),
+            "navigation": int(os.getenv("NAVIGATION_TIMEOUT", "30")),
+            "selector": int(os.getenv("SELECTOR_TIMEOUT", "10")),
+        }
 
     async def __aenter__(self):
         """Context manager entry - initialize browser"""
@@ -76,6 +82,13 @@ class TwoParkScraper:
             await self.cleanup()
             raise BrowserException(f"Browser initialization failed: {str(e)}")
 
+    def _get_timeout_ms(self, timeout_type: str) -> int:
+        """Get timeout in milliseconds for given type"""
+        timeout_sec = self.timeouts.get(timeout_type, 30)
+        # Validate range (10-300 seconds)
+        timeout_sec = max(10, min(300, timeout_sec))
+        return timeout_sec * 1000
+
     async def cleanup(self):
         """Cleanup browser resources"""
         try:
@@ -94,10 +107,12 @@ class TwoParkScraper:
             await self.page.goto(
                 "https://mijn.2park.nl/login",
                 wait_until="networkidle",
-                timeout=30000,
+                timeout=self._get_timeout_ms("navigation"),
             )
 
-            await self.page.wait_for_selector("#login_email", timeout=10000)
+            await self.page.wait_for_selector(
+                "#login_email", timeout=self._get_timeout_ms("selector")
+            )
             await self.page.fill("#login_email", self.email)
             await self.page.fill("#login_password", self.password)
             await self.page.click('button[type="submit"]')
@@ -136,12 +151,15 @@ class TwoParkScraper:
 
             # Navigate to dashboard if not already there
             if "dashboard" not in self.page.url.lower():
-                await self.page.goto("https://mijn.2park.nl/dashboard", timeout=30000)
+                await self.page.goto(
+                    "https://mijn.2park.nl/dashboard",
+                    timeout=self._get_timeout_ms("navigation"),
+                )
 
             # Wait for balance element
             await self.page.wait_for_selector(
                 ".balance-container .amount, .balance .amount, .account-balance",
-                timeout=10000,
+                timeout=self._get_timeout_ms("selector"),
             )
 
             # Try multiple selectors for balance
@@ -185,12 +203,16 @@ class TwoParkScraper:
                 "parking" not in self.page.url.lower()
                 and "dashboard" not in self.page.url.lower()
             ):
-                await self.page.goto("https://mijn.2park.nl/dashboard", timeout=30000)
+                await self.page.goto(
+                    "https://mijn.2park.nl/dashboard",
+                    timeout=self._get_timeout_ms("navigation"),
+                )
 
             # Wait for reservations to load (or empty state)
             try:
                 await self.page.wait_for_selector(
-                    ".parkapp-item, .no-reservations, .empty-state", timeout=10000
+                    ".parkapp-item, .no-reservations, .empty-state",
+                    timeout=self._get_timeout_ms("selector"),
                 )
             except PlaywrightTimeoutError:
                 logger.info("No reservations found")
@@ -271,11 +293,15 @@ class TwoParkScraper:
                     )
 
             # Navigate to new booking page
-            await self.page.goto("https://mijn.2park.nl/parkings/new", timeout=30000)
+            await self.page.goto(
+                "https://mijn.2park.nl/parkings/new",
+                timeout=self._get_timeout_ms("navigation"),
+            )
 
             # Wait for the form
             await self.page.wait_for_selector(
-                "#license_plate, input[name='license_plate']", timeout=10000
+                "#license_plate, input[name='license_plate']",
+                timeout=self._get_timeout_ms("selector"),
             )
 
             # Fill in license plate
@@ -318,7 +344,9 @@ class TwoParkScraper:
             )
             if submit_button:
                 await submit_button.click()
-                await self.page.wait_for_load_state("networkidle", timeout=30000)
+                await self.page.wait_for_load_state(
+                    "networkidle", timeout=self._get_timeout_ms("navigation")
+                )
             else:
                 raise ScrapeErrorException("Submit button not found")
 
@@ -374,7 +402,10 @@ class TwoParkScraper:
 
             # Navigate to extend booking page (this depends on actual website structure)
             # This is a placeholder - you'll need to adjust based on actual 2park.nl UI
-            await self.page.goto("https://mijn.2park.nl/parkings", timeout=30000)
+            await self.page.goto(
+                "https://mijn.2park.nl/parkings",
+                timeout=self._get_timeout_ms("navigation"),
+            )
 
             # Find the booking in the list and click extend button
             booking_items = await self.page.query_selector_all(".parkapp-item")
@@ -405,18 +436,37 @@ class TwoParkScraper:
                             if submit_button:
                                 await submit_button.click()
                                 await self.page.wait_for_load_state(
-                                    "networkidle", timeout=30000
+                                    "networkidle",
+                                    timeout=self._get_timeout_ms("navigation"),
                                 )
 
-                            # Calculate new end time
-                            # Parse the original end time and add minutes
+                            # Calculate new end time from the actual booking
+                            # Parse the end_time string from the reservation
                             try:
-                                # This is a simple placeholder - you may need to parse the time properly
-                                original_end = datetime.now() + timedelta(hours=1)
+                                # Parse the end time from the reservation (format: "HH:MM" or full datetime)
+                                end_time_str = target_booking.end_time
+                                # Try to parse as ISO format first, then fall back to time-only format
+                                if "T" in end_time_str or "-" in end_time_str:
+                                    original_end = date_parser.isoparse(end_time_str)
+                                    if original_end.tzinfo is not None:
+                                        original_end = original_end.replace(tzinfo=None)
+                                else:
+                                    # Time-only format like "17:00" - assume today's date
+                                    today = datetime.now()
+                                    time_obj = date_parser.parse(end_time_str)
+                                    original_end = datetime(
+                                        today.year, today.month, today.day,
+                                        time_obj.hour, time_obj.minute
+                                    )
                                 new_end_time = original_end + timedelta(
                                     minutes=additional_minutes
                                 )
                             except Exception:
+                                # Fallback: use current time + additional minutes
+                                logger.warning(
+                                    f"Could not parse end time '{target_booking.end_time}', "
+                                    f"using current time as base"
+                                )
                                 new_end_time = datetime.now() + timedelta(
                                     minutes=additional_minutes
                                 )
@@ -461,7 +511,10 @@ class TwoParkScraper:
                 )
 
             # Navigate to bookings page
-            await self.page.goto("https://mijn.2park.nl/parkings", timeout=30000)
+            await self.page.goto(
+                "https://mijn.2park.nl/parkings",
+                timeout=self._get_timeout_ms("navigation"),
+            )
 
             # Find the booking and click cancel button
             booking_items = await self.page.query_selector_all(".parkapp-item")
@@ -485,12 +538,13 @@ class TwoParkScraper:
                             if confirm_button:
                                 await confirm_button.click()
                                 await self.page.wait_for_load_state(
-                                    "networkidle", timeout=30000
+                                    "networkidle",
+                                    timeout=self._get_timeout_ms("navigation"),
                                 )
 
                             return {
                                 "status": "cancelled",
-                                "cancelled_at": datetime.utcnow(),
+                                "cancelled_at": datetime.now(timezone.utc),
                             }
                         else:
                             raise ScrapeErrorException(

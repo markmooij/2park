@@ -2,12 +2,61 @@
 Pydantic models for 2Park API requests and responses
 """
 
+import re
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Request Models
+
+
+def validate_license_plate(license_plate: str) -> str:
+    """
+    Validate Dutch license plate format
+
+    Supports:
+    - Current EU format: XX-XX-X or XX-XXX
+    - Historic format: XX-XX-XX
+    - Temporary format: XX-XX-??
+    """
+    # Remove whitespace
+    license_plate = license_plate.strip().upper()
+
+    # Dutch license plate patterns (case-insensitive)
+    patterns = [
+        # Current EU format (2 letters, 2 letters, 1 digit)
+        r"^[A-Z]{2}-[A-Z]{2}-[0-9]{1}$",
+        # Current EU format (2 letters, 3 digits)
+        r"^[A-Z]{2}-[0-9]{3}-[A-Z]{2}$",
+        # Current EU format (2 letters, 2 digits, 1 letter)
+        r"^[A-Z]{2}-[0-9]{2}-[A-Z]{1}$",
+        # Historic format (2 letters, 2 letters, 2 digits)
+        r"^[A-Z]{2}-[A-Z]{2}-[0-9]{2}$",
+        # Historic format (2 letters, 3 letters, 2 digits)
+        r"^[A-Z]{2}-[A-Z]{3}-[0-9]{2}$",
+        # Temporary format
+        r"^[A-Z]{2}-[A-Z]{2}-[\?]{2}$",
+        # Simple format without dashes
+        r"^[A-Z]{2}[0-9]{3}[A-Z]{2}$",
+    ]
+
+    # Check simple format without dashes first (XX123XY -> returns original with dashes if valid)
+    plate_no_dashes = license_plate.replace("-", "")
+
+    if re.match(r"^[A-Z]{2}[0-9]{3}[A-Z]{2}$", plate_no_dashes):
+        return license_plate  # Return original (may have dashes, validation passed on no-dashes version)
+
+    # Validate with dashes against specific patterns
+
+    for pattern in patterns:
+        if re.match(pattern, license_plate):
+            return license_plate
+
+    raise ValueError(
+        f"Invalid license plate format: {license_plate}. "
+        f"Use format like 'AB-12-CD' or 'AB123CD'"
+    )
 
 
 class CreateBookingRequest(BaseModel):
@@ -19,6 +68,14 @@ class CreateBookingRequest(BaseModel):
     start_time: str = Field(..., description="Start time: 'now' or ISO 8601 datetime")
     duration_minutes: int = Field(..., description="Duration in minutes", gt=0, le=1440)
 
+    @field_validator("license_plate", mode="before")
+    @classmethod
+    def validate_plate(cls, v: str) -> str:
+        """Validate license plate format"""
+        if isinstance(v, str):
+            return validate_license_plate(v)
+        return v
+
 
 class ExtendBookingRequest(BaseModel):
     """Request model for extending a booking"""
@@ -26,6 +83,17 @@ class ExtendBookingRequest(BaseModel):
     additional_minutes: int = Field(
         ..., description="Additional minutes to add", gt=0, le=1440
     )
+    license_plate: str = Field(
+        ..., description="License plate in format XX-123-Y", min_length=1
+    )
+
+    @field_validator("license_plate", mode="before")
+    @classmethod
+    def validate_plate(cls, v: str) -> str:
+        """Validate license plate format"""
+        if isinstance(v, str):
+            return validate_license_plate(v)
+        return v
 
 
 # Response Models

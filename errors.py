@@ -24,6 +24,7 @@ class ErrorCode(str, Enum):
     BOOKING_CONFLICT = "BOOKING_CONFLICT"
     BOOKING_NOT_FOUND = "BOOKING_NOT_FOUND"
     INVALID_LICENSE_PLATE = "INVALID_LICENSE_PLATE"
+    RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED"
     INVALID_TIME = "INVALID_TIME"
 
     # Scraping errors
@@ -129,3 +130,12 @@ class BrowserException(APIException):
 
     def __init__(self, message: str = "Browser automation error"):
         super().__init__(code=ErrorCode.BROWSER_ERROR, message=message, status_code=500)
+
+
+class RateLimitExceededException(APIException):
+    """Rate limit exceeded exception"""
+
+    def __init__(self, message: str = "Rate limit exceeded. Please try again later."):
+        super().__init__(
+            code=ErrorCode.RATE_LIMIT_EXCEEDED, message=message, status_code=429
+        )

@@ -7,7 +7,12 @@ import os
 import sys
 from datetime import datetime
 
-import requests
+# requests is used for testing the API endpoints
+# Install with: uv add requests
+try:
+    import requests
+except ImportError:
+    requests = None
 
 # Configuration
 API_BASE = "http://localhost:8000"

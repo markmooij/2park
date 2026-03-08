@@ -5,11 +5,13 @@ Provides RESTful endpoints for parking management
 
 import logging
 import os
-from datetime import datetime, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from dateutil import parser as date_parser
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from auth import get_credentials, verify_token
@@ -22,6 +24,7 @@ from models import (
     ExtendBookingRequest,
     ExtendBookingResponse,
 )
+from rate_limit import check_rate_limit, rate_limiter
 from scraper import TwoParkScraper
 
 # Configure logging
@@ -37,6 +40,42 @@ app = FastAPI(
     description="RESTful API for managing parking bookings on 2park.nl",
     version="1.0.0",
 )
+
+
+# Add CORS middleware for Home Assistant integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure this for production
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
+
+
+# Request ID middleware
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Add request ID to logs and response headers"""
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    # Add request ID to logger
+    log_with_request_id = logging.LoggerAdapter(logger, {"request_id": request_id})
+    log_with_request_id.info(f"Request started: {request.method} {request.url.path}")
+
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+
+    # Add rate limit headers
+    client_ip = request.client.host if request.client else "unknown"
+    rate_limit_headers = {
+        "X-RateLimit-Limit": str(rate_limiter.get_config()[0]),
+        "X-RateLimit-Remaining": str(rate_limiter.get_remaining(client_ip)),
+        "X-RateLimit-Reset": str(rate_limiter.get_reset_time(client_ip)),
+    }
+    response.headers.update(rate_limit_headers)
+
+    return response
 
 
 # Exception handler for API exceptions
@@ -78,13 +117,24 @@ async def root():
             "cancel_booking": "POST /api/bookings/{license_plate}/cancel",
         },
         "authentication": "Bearer token required in Authorization header",
+        "rate_limit": {
+            "max_requests": rate_limiter.get_config()[0],
+            "window_seconds": rate_limiter.get_config()[1],
+        },
     }
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "rate_limit": {
+            "max_requests": rate_limiter.get_config()[0],
+            "window_seconds": rate_limiter.get_config()[1],
+        },
+    }
 
 
 @app.get(
@@ -93,18 +143,24 @@ async def health_check():
     responses={
         200: {"description": "Balance retrieved successfully"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
 async def get_balance(
+    request: Request,
     authorized: Annotated[bool, Depends(verify_token)],
+    _: Annotated[bool, Depends(check_rate_limit)],
 ):
     """
     Get current account balance
 
     Requires valid Bearer token in Authorization header.
+    Rate limited by client IP.
     """
-    logger.info("Getting account balance")
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
+    logger_with_id.info("Getting account balance")
 
     email, password = get_credentials()
 
@@ -113,7 +169,7 @@ async def get_balance(
         return BalanceResponse(
             balance=balance,
             currency="EUR",
-            last_checked=datetime.utcnow(),
+            last_checked=datetime.now(timezone.utc),
         )
 
 
@@ -123,29 +179,36 @@ async def get_balance(
     status_code=201,
     responses={
         201: {"description": "Booking created successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid license plate format"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         409: {"model": ErrorResponse, "description": "Booking conflict"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
 async def create_booking(
     request: CreateBookingRequest,
+    request_obj: Request,
     authorized: Annotated[bool, Depends(verify_token)],
+    _: Annotated[bool, Depends(check_rate_limit)],
 ):
     """
     Create a new parking booking
 
     Requires valid Bearer token in Authorization header.
+    Rate limited by client IP.
 
     - **license_plate**: License plate in format XX-123-Y
     - **start_time**: "now" or ISO 8601 datetime string
     - **duration_minutes**: Duration in minutes (1-1440)
     """
-    logger.info(f"Creating booking for {request.license_plate}")
+    request_id = getattr(request_obj.state, "request_id", "unknown")
+    logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
+    logger_with_id.info(f"Creating booking for {request.license_plate}")
 
     # Parse start time
     if request.start_time.lower() == "now":
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
     else:
         try:
             start_time = date_parser.isoparse(request.start_time)
@@ -191,25 +254,32 @@ async def create_booking(
     response_model=ExtendBookingResponse,
     responses={
         200: {"description": "Booking extended successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid license plate format"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         404: {"model": ErrorResponse, "description": "Booking not found"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
 async def extend_booking(
     license_plate: str,
     request: ExtendBookingRequest,
+    request_obj: Request,
     authorized: Annotated[bool, Depends(verify_token)],
+    _: Annotated[bool, Depends(check_rate_limit)],
 ):
     """
     Extend an existing parking booking
 
     Requires valid Bearer token in Authorization header.
+    Rate limited by client IP.
 
     - **license_plate**: License plate of the booking to extend
     - **additional_minutes**: Additional minutes to add (1-1440)
     """
-    logger.info(
+    request_id = getattr(request_obj.state, "request_id", "unknown")
+    logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
+    logger_with_id.info(
         f"Extending booking for {license_plate} by {request.additional_minutes} minutes"
     )
 
@@ -234,21 +304,27 @@ async def extend_booking(
         200: {"description": "Booking cancelled successfully"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         404: {"model": ErrorResponse, "description": "Booking not found"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
 async def cancel_booking(
     license_plate: str,
+    request_obj: Request,
     authorized: Annotated[bool, Depends(verify_token)],
+    _: Annotated[bool, Depends(check_rate_limit)],
 ):
     """
     Cancel an existing parking booking
 
     Requires valid Bearer token in Authorization header.
+    Rate limited by client IP.
 
     - **license_plate**: License plate of the booking to cancel
     """
-    logger.info(f"Cancelling booking for {license_plate}")
+    request_id = getattr(request_obj.state, "request_id", "unknown")
+    logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
+    logger_with_id.info(f"Cancelling booking for {license_plate}")
 
     email, password = get_credentials()
 
