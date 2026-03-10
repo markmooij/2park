@@ -549,6 +549,300 @@ docker-compose up -d
 docker-compose restart
 ```
 
+## Home Assistant Integration
+
+Automate parking bookings based on presence detection (WiFi, Bluetooth, etc.) with Home Assistant.
+
+### Overview
+
+The 2Park API integrates seamlessly with Home Assistant to automate parking reservations when family members arrive home. The system can:
+- Detect presence via WiFi, Bluetooth, or other methods
+- Look up the person's license plate and default booking duration
+- Check account balance before booking
+- Alert admins if balance is insufficient
+- Create parking bookings automatically
+
+### Setup
+
+#### 1. Add REST Commands to `configuration.yaml`
+
+```yaml
+rest_command:
+  2park_get_balance:
+    url: "http://YOUR_SERVER_IP:8090/api/account/balance"
+    method: GET
+    headers:
+      Authorization: "Bearer YOUR_API_TOKEN"
+    content_type: application/json
+
+  2park_create_booking:
+    url: "http://YOUR_SERVER_IP:8090/api/bookings"
+    method: POST
+    headers:
+      Authorization: "Bearer YOUR_API_TOKEN"
+      Content-Type: "application/json"
+    data: |
+      {
+        "license_plate": "{{ license_plate }}",
+        "start_time": "now",
+        "duration_minutes": {{ duration_minutes }}
+      }
+
+  2park_list_bookings:
+    url: "http://YOUR_SERVER_IP:8090/api/bookings"
+    method: GET
+    headers:
+      Authorization: "Bearer YOUR_API_TOKEN"
+    content_type: application/json
+```
+
+#### 2. Define People and Their Parking Details
+
+Create a configuration file (e.g., `packages/parking.yaml`) or use secrets:
+
+```yaml
+# configuration.yaml or packages/parking.yaml
+input_select:
+  parking_default_duration:
+    name: "Default Parking Duration"
+    options:
+      - "60"
+      - "120"
+      - "180"
+      - "240"
+    initial: "120"
+
+# Store license plates in secrets.yaml for security
+# secrets.yaml:
+#   parking_people:
+#     mark:
+#       license_plate: "51PXPN"
+#       default_duration: 120
+#     janneke:
+#       license_plate: "AB-12-CD"
+#       default_duration: 60
+```
+
+#### 3. Create Helper Template Entities
+
+```yaml
+# configuration.yaml
+template:
+  - sensor:
+      - name: "2Park Balance"
+        unique_id: "2park_balance"
+        unit_of_measurement: "EUR"
+        state_class: "measurement"
+        icon: "mdi:cash"
+        device_class: "monetary"
+        scan_interval: 300
+        command:
+          url: "http://YOUR_SERVER_IP:8090/api/account/balance"
+          method: GET
+          headers:
+            Authorization: "Bearer YOUR_API_TOKEN"
+          value_template: "{{ value_json.balance }}"
+
+  - binary_sensor:
+      - name: "2Park Low Balance"
+        device_class: "problem"
+        icon: "mdi:alert-circle"
+        value_template: "{{ states('sensor.2park_balance') | float(0) < 5.0 }}"
+```
+
+### Automation Examples
+
+#### Auto-Book When Person Arrives
+
+```yaml
+# automations/parking.yaml
+alias: "Parking - Auto Book on Arrival"
+description: "Automatically book parking when a person arrives home"
+trigger:
+  - platform: state
+    entity_id:
+      - person.mark
+      - person.janneke
+    from: "not_home"
+    to: "home"
+condition:
+  - condition: template
+    value_template: >
+      {{ states('binary_sensor.2park_low_balance') != 'on' }}
+action:
+  - service: rest_command.2park_get_balance
+    target:
+      entity_id: sensor.2park_balance
+    data:
+      response_variable: balance_response
+
+  - service: rest_command.2park_create_booking
+    data:
+      license_plate: >
+        {% if trigger.entity_id == 'person.mark' %}
+          51PXPN
+        {% elif trigger.entity_id == 'person.janneke' %}
+          AB-12-CD
+        {% endif %}
+      duration_minutes: >
+        {% if trigger.entity_id == 'person.mark' %}
+          120
+        {% elif trigger.entity_id == 'person.janneke' %}
+          60
+        {% endif %}
+    response_variable: booking_response
+
+  - service: notify.persistent_notification
+    data:
+      title: "Parking Booked"
+      message: >
+        Parking booked for {{ trigger.friendly_name }}
+        License plate: {{ license_plate }}
+        Duration: {{ duration_minutes }} minutes
+      target:
+        - persistent_notification
+mode: single
+```
+
+#### Alert on Low Balance
+
+```yaml
+alias: "Parking - Alert on Low Balance"
+description: "Notify admins when 2Park balance is low"
+trigger:
+  - platform: state
+    entity_id: binary_sensor.2park_low_balance
+    from: "off"
+    to: "on"
+action:
+  - service: notify.notify
+    data:
+      title: "⚠️ Low Parking Balance"
+      message: >
+        Your 2Park account balance is low!
+        Current balance: {{ states('sensor.2park_balance') }} EUR
+        Please top up to ensure automatic bookings continue working.
+mode: single
+```
+
+#### Cancel Booking When Person Leaves
+
+```yaml
+alias: "Parking - Cancel Booking on Departure"
+description: "Cancel parking when person leaves home"
+trigger:
+  - platform: state
+    entity_id:
+      - person.mark
+      - person.janneke
+    from: "home"
+    to: "not_home"
+condition:
+  - condition: template
+    value_template: "{{ states('sensor.2park_active_bookings') | int(0) > 0 }}"
+action:
+  - service: rest_command.2park_list_bookings
+    data:
+      response_variable: bookings
+
+  - service: rest_command.2park_cancel_booking
+    data:
+      license_plate: >
+        {% for booking in bookings_json.bookings %}
+          {% if booking.license_plate in ['51PXPN', 'AB-12-CD'] %}
+            {{ booking.license_plate }}
+          {% endif %}
+        {% endfor %}
+mode: single
+```
+
+### Advanced: Dynamic License Plate Lookup
+
+For a more maintainable setup, store person-to-license-plate mappings in a config file:
+
+```yaml
+# packages/parking_config.yaml
+# Create a JSON file at /config/parking_people.json:
+# {
+#   "mark": {"license_plate": "51PXPN", "default_duration": 120},
+#   "janneke": {"license_plate": "AB-12-CD", "default_duration": 60}
+# }
+
+rest:
+  - resource: "http://localhost:8090/api/bookings"
+    scan_interval: 300
+    json_attributes_path: "$"
+    json_attributes:
+      - bookings
+
+template:
+  - sensor:
+      - name: "Person License Plate"
+        unique_id: "parking_license_plate_template"
+        icon: "mdi:car"
+        value_template: >
+          {% set person_name = trigger.entity_id.split('.')[-1] %}
+          {% set plates = {
+            'mark': '51PXPN',
+            'janneke': 'AB-12-CD'
+          } %}
+          {{ plates.get(person_name, 'Unknown') }}
+```
+
+### API Endpoints for Home Assistant
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/account/balance` | GET | Check current balance |
+| `/api/bookings` | GET | List all active bookings |
+| `/api/bookings` | POST | Create new booking |
+| `/api/bookings/{plate}/extend` | POST | Extend existing booking |
+| `/api/bookings/{plate}/cancel` | POST | Cancel booking |
+
+### Example: Check Balance Before Booking
+
+```yaml
+alias: "Parking - Safe Auto Book"
+trigger:
+  - platform: state
+    entity_id: person.mark
+    from: "not_home"
+    to: "home"
+action:
+  # Step 1: Check balance
+  - service: rest_command.2park_get_balance
+    data:
+      response_variable: balance_check
+
+  # Step 2: Only book if balance is sufficient
+  - condition: template
+    value_template: "{{ balance_check.json.balance >= 5.0 }}"
+
+  # Step 3: Create booking
+  - service: rest_command.2park_create_booking
+    data:
+      license_plate: "51PXPN"
+      duration_minutes: 120
+
+  # Step 4: Notify on success
+  - service: notify.notify
+    data:
+      title: "Parking Booked"
+      message: "Parking reserved for Mark (51PXPN) for 2 hours"
+mode: single
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Connection refused | Ensure API server is running and accessible from Home Assistant |
+| Unauthorized | Verify API token in rest_command configuration |
+| Booking failed | Check balance and ensure no duplicate active bookings |
+| Timeout errors | Increase `timeout:` in rest_command configuration |
+
+---
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for planned features and improvements.

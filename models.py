@@ -178,6 +178,30 @@ class BalanceResponse(BaseModel):
         }
 
 
+class ListBookingsResponse(BaseModel):
+    """Response model for listing all active bookings"""
+
+    bookings: list[BookingResponse] = Field(
+        ..., description="List of active bookings"
+    )
+    count: int = Field(..., description="Number of active bookings")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "bookings": [
+                    {
+                        "license_plate": "AB-12-CD",
+                        "start_time": "2025-01-05T14:00:00Z",
+                        "end_time": "2025-01-05T16:00:00Z",
+                        "status": "active",
+                    }
+                ],
+                "count": 1,
+            }
+        }
+
+
 # Internal Models
 
 

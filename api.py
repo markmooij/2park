@@ -27,6 +27,7 @@ from models import (
     CreateBookingRequest,
     ExtendBookingRequest,
     ExtendBookingResponse,
+    ListBookingsResponse,
 )
 from rate_limit import check_rate_limit, rate_limiter
 from scraper import TwoParkScraper
@@ -175,6 +176,55 @@ async def get_balance(
             currency="EUR",
             last_checked=datetime.now(timezone.utc),
         )
+
+
+@app.get(
+    "/api/bookings",
+    response_model=ListBookingsResponse,
+    responses={
+        200: {"description": "List of active bookings retrieved successfully"},
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
+        500: {"model": ErrorResponse, "description": "Server error"},
+    },
+)
+async def list_bookings(
+    request: Request,
+    authorized: Annotated[bool, Depends(verify_token)],
+    _: Annotated[bool, Depends(check_rate_limit)],
+):
+    """
+    Get all active parking bookings
+
+    Requires valid Bearer token in Authorization header.
+    Rate limited by client IP.
+
+    Returns a list of all active bookings with license plate, start/end times, and status.
+    """
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
+    logger_with_id.info("Listing all active bookings")
+
+    email, password = get_credentials()
+
+    async with TwoParkScraper(email, password) as scraper:
+        reservations = await scraper.get_active_reservations()
+
+        bookings = [
+            BookingResponse(
+                license_plate=res.license_plate,
+                start_time=datetime.fromisoformat(res.start_time.replace("Z", "+00:00"))
+                if res.start_time
+                else datetime.now(timezone.utc),
+                end_time=datetime.fromisoformat(res.end_time.replace("Z", "+00:00"))
+                if res.end_time
+                else datetime.now(timezone.utc),
+                status="active",
+            )
+            for res in reservations
+        ]
+
+        return ListBookingsResponse(bookings=bookings, count=len(bookings))
 
 
 @app.post(
