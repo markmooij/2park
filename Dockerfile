@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libatk1.0-0 lib
 
 RUN pip install --no-cache-dir playwright fastapi uvicorn pydantic python-dateutil python-dotenv
 
-RUN python -m playwright install chromium
+RUN python -m playwright install-deps chromium && python -m playwright install chromium
 
 RUN useradd --create-home --shell /bin/bash appuser
 
