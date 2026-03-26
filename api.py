@@ -210,19 +210,34 @@ async def list_bookings(
     async with TwoParkScraper(email, password) as scraper:
         reservations = await scraper.get_active_reservations()
 
-        bookings = [
-            BookingResponse(
-                license_plate=res.license_plate,
-                start_time=datetime.fromisoformat(res.start_time.replace("Z", "+00:00"))
-                if res.start_time
-                else datetime.now(timezone.utc),
-                end_time=datetime.fromisoformat(res.end_time.replace("Z", "+00:00"))
-                if res.end_time
-                else datetime.now(timezone.utc),
-                status="active",
+        bookings = []
+        for res in reservations:
+            # Parse start time - handle empty strings and invalid formats
+            if res.start_time:
+                try:
+                    start_dt = datetime.fromisoformat(res.start_time.replace("Z", "+00:00"))
+                except ValueError:
+                    start_dt = datetime.now(timezone.utc)
+            else:
+                start_dt = datetime.now(timezone.utc)
+
+            # Parse end time - handle empty strings and invalid formats
+            if res.end_time:
+                try:
+                    end_dt = datetime.fromisoformat(res.end_time.replace("Z", "+00:00"))
+                except ValueError:
+                    end_dt = datetime.now(timezone.utc)
+            else:
+                end_dt = datetime.now(timezone.utc)
+
+            bookings.append(
+                BookingResponse(
+                    license_plate=res.license_plate,
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    status="active",
+                )
             )
-            for res in reservations
-        ]
 
         return ListBookingsResponse(bookings=bookings, count=len(bookings))
 
