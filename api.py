@@ -15,8 +15,10 @@ from typing import Annotated
 
 from dateutil import parser as date_parser
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from auth import get_credentials, verify_token
 from errors import APIException, ErrorResponse
@@ -90,6 +92,45 @@ async def api_exception_handler(request: Request, exc: APIException):
     return JSONResponse(
         status_code=exc.status_code,
         content=exc.to_response(),
+    )
+
+
+# Exception handler for validation errors (Pydantic / FastAPI)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Return validation errors in standardized error format"""
+    errors = exc.errors()
+    # Build a human-readable message from the first error
+    if errors:
+        first = errors[0]
+        field = ".".join(str(loc) for loc in first.get("loc", []) if loc != "body")
+        msg = first.get("msg", "Validation error")
+        message = f"{field}: {msg}" if field else msg
+    else:
+        message = "Validation error"
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": message,
+            }
+        },
+    )
+
+
+# Exception handler for HTTP exceptions (404, 405, etc.)
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Return HTTP exceptions in standardized error format"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR" if exc.status_code >= 500 else "VALIDATION_ERROR",
+                "message": exc.detail if isinstance(exc.detail, str) else str(exc.detail),
+            }
+        },
     )
 
 
@@ -281,21 +322,17 @@ async def create_booking(
     else:
         try:
             start_time = date_parser.isoparse(request.start_time)
-            # Convert to UTC if not already
+            # Normalize to UTC
             if start_time.tzinfo is None:
-                # Assume UTC if no timezone
-                start_time = start_time.replace(tzinfo=None)
+                start_time = start_time.replace(tzinfo=timezone.utc)
             else:
-                start_time = start_time.astimezone(None).replace(tzinfo=None)
+                start_time = start_time.astimezone(timezone.utc)
         except Exception as e:
-            raise HTTPException(
+            from errors import ErrorCode
+            raise APIException(
+                code=ErrorCode.INVALID_TIME,
+                message=f"Invalid start_time format. Use 'now' or ISO 8601 (e.g. '2026-01-05T14:00:00Z')",
                 status_code=400,
-                detail={
-                    "error": {
-                        "code": "INVALID_TIME",
-                        "message": f"Invalid start_time format: {str(e)}",
-                    }
-                },
             )
 
     # Calculate end time
@@ -425,10 +462,11 @@ if __name__ == "__main__":
 
     # Run the API server
     logger.info("Starting 2Park API server...")
+    port = int(os.getenv("PORT", "8090"))
     uvicorn.run(
         "api:app",
         host="0.0.0.0",
-        port=8090,
+        port=port,
         reload=True,
         log_level="info",
     )

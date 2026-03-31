@@ -4,6 +4,7 @@ Simple bearer token authentication
 """
 
 import os
+import secrets
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -51,8 +52,8 @@ def verify_token(authorization: Optional[str] = Header(None)) -> bool:
     provided_token = parts[1]
     expected_token = get_api_token()
 
-    # Simple constant-time comparison to prevent timing attacks
-    if provided_token != expected_token:
+    # Constant-time comparison to prevent timing attacks
+    if not secrets.compare_digest(provided_token, expected_token):
         raise InvalidTokenException("Invalid API token")
 
     return True

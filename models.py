@@ -90,17 +90,6 @@ class ExtendBookingRequest(BaseModel):
     additional_minutes: int = Field(
         ..., description="Additional minutes to add", gt=0, le=1440
     )
-    license_plate: str = Field(
-        ..., description="License plate in format XX-123-Y", min_length=1
-    )
-
-    @field_validator("license_plate", mode="before")
-    @classmethod
-    def validate_plate(cls, v: str) -> str:
-        """Validate license plate format"""
-        if isinstance(v, str):
-            return validate_license_plate(v)
-        return v
 
 
 # Response Models

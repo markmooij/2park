@@ -124,6 +124,9 @@ class TwoParkScraper:
             # Login immediately
             await self._login()
 
+        except (LoginFailedException, TimeoutException):
+            await self.cleanup()
+            raise
         except Exception as e:
             logger.error(f"Failed to initialize browser: {e}")
             await self.cleanup()

@@ -1,663 +1,301 @@
 # 2Park API & Checker
 
-Complete REST API and automated tool for managing parking reservations on [2park.nl](https://mijn.2park.nl).
+REST API and CLI tool for managing parking reservations on [2park.nl](https://mijn.2park.nl).
 
-## Features
+## Quick Start (Docker)
 
-### REST API
-- 🚀 **REST API** for parking automation with FastAPI
-- 🔐 **Bearer token authentication**
-- 📊 **Get account balance** via API endpoint
-- ➕ **Create parking bookings** programmatically
-- ⏱️ **Extend active bookings** with additional time
-- ❌ **Cancel bookings** via API
-- 🔄 **Standardized error responses** with error codes
-- 📖 **Complete API documentation** with examples
-- ⚖️ **Rate limiting** to prevent abuse
-- 🆔 **License plate validation** for Dutch formats
-- ⏱️ **Configurable timeouts** for browser operations
+```bash
+cp .env.example .env
+nano .env  # Add your 2Park credentials + generate an API token
 
-### CLI/Scraper
-- 🚗 View active parking reservations with details (name, license plate, start/end times)
-- 💰 Check current account balance
-- 👀 Visible browser mode to see what's happening in real-time
-- 📝 Detailed logging for debugging
-- 🔒 Secure credential management via environment variables
-- ⚡ Proper error handling and timeouts
+# Generate a secure API token
+openssl rand -hex 32
 
-## Prerequisites
+# Build and run
+docker compose up -d
 
-- Python 3.12+
-- Chrome/Chromium browser installed on your system
+# Test
+curl http://localhost:8090/health
+curl -H "Authorization: Bearer YOUR_API_TOKEN" http://localhost:8090/api/account/balance
+```
 
-## Quick Start
-## Quick Start
+## Quick Start (Local)
 
-### For API Users
-
-1. **Install dependencies:**
 ```bash
 uv sync
 uv run playwright install chromium
-```
-
-2. **Set up credentials:**
-```bash
 cp .env.example .env
-nano .env  # Add your credentials and generate an API token
-```
-
-3. **Generate API token:**
-```bash
-openssl rand -hex 32
-```
-
-4. **Start the API server:**
-```bash
+nano .env
 python api.py
 ```
 
-5. **Test the API:**
+## API Endpoints
+
+All endpoints except `/health` require a Bearer token in the `Authorization` header.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (no auth) |
+| `/api/account/balance` | GET | Get current account balance |
+| `/api/bookings` | GET | List all active bookings |
+| `/api/bookings` | POST | Create a new booking |
+| `/api/bookings/{license_plate}/extend` | POST | Extend an existing booking |
+| `/api/bookings/{license_plate}/cancel` | POST | Cancel a booking |
+
+## curl Examples
+
+All examples use port `8090` (default for both Docker and local). Replace `YOUR_API_TOKEN` with your actual token.
+
+### Get Account Balance
+
 ```bash
-curl -X GET "http://localhost:8000/api/account/balance" \
-  -H "Authorization: Bearer your-token-here"
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  http://localhost:8090/api/account/balance
 ```
 
-📖 **See [API.md](API.md) for complete API documentation**
-
-### For CLI Users
-
-1. **Install dependencies:**
-```bash
-uv sync
-uv run playwright install chromium
+```json
+{
+  "balance": 15.97,
+  "currency": "EUR",
+  "last_checked": "2026-03-31T13:27:13.889549Z"
+}
 ```
 
-2. **Set up credentials:**
+### List Active Bookings
+
 ```bash
-cp .env.example .env
-nano .env  # Add your 2Park credentials
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  http://localhost:8090/api/bookings
 ```
 
-3. **Run the checker:**
-```bash
-./run.sh
+```json
+{
+  "bookings": [
+    {
+      "license_plate": "31TJHV",
+      "start_time": "2026-03-31T14:46:00Z",
+      "end_time": "2026-03-31T17:00:00Z",
+      "status": "active"
+    }
+  ],
+  "count": 1
+}
 ```
 
-The browser will open and you can watch the automation in action.
-
-## API Usage
-
-The 2Park API provides a stateless REST interface for parking automation.
-
-### Available Endpoints
-
-- `GET /api/account/balance` - Get current balance
-- `POST /api/bookings` - Create a new booking
-- `POST /api/bookings/{license_plate}/extend` - Extend a booking
-- `POST /api/bookings/{license_plate}/cancel` - Cancel a booking
-
-### Example: Create Booking
+### Create a Booking
 
 ```bash
-curl -X POST "http://localhost:8090/api/bookings" \
-  -H "Authorization: Bearer your-token" \
+curl -X POST http://localhost:8090/api/bookings \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "license_plate": "AB-123-CD",
+    "license_plate": "51-PXPN",
     "start_time": "now",
     "duration_minutes": 120
   }'
 ```
 
-### Example: Get Balance
-
-```bash
-curl -X GET "http://localhost:8000/api/account/balance" \
-  -H "Authorization: Bearer your-token"
-```
-
-Response:
 ```json
 {
-  "balance": 12.35,
-  "currency": "EUR",
-  "last_checked": "2025-01-05T13:55:00Z"
+  "license_plate": "51-PXPN",
+  "start_time": "2026-03-31T13:27:13Z",
+  "end_time": "2026-03-31T15:27:13Z",
+  "status": "active"
 }
 ```
 
-### Interactive API Documentation
+- `license_plate`: Dutch format (`AB-12-CD`, `51PXPN`, `51-PXPN`)
+- `start_time`: `"now"` or ISO 8601 string (e.g. `"2026-04-01T09:00:00Z"`)
+- `duration_minutes`: 1-1440
 
-Once the server is running, visit:
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+### Extend a Booking
 
-📖 **Full API documentation:** [API.md](API.md)
-
-## CLI Usage
-
-### Easy way (with run script):
 ```bash
-./run.sh
+curl -X POST http://localhost:8090/api/bookings/51-PXPN/extend \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"additional_minutes": 60}'
 ```
 
-The run script will:
-- Check for credentials in `.env` or prompt you for them
-- Verify Playwright browsers are installed
-- Run the checker with proper error handling
-
-### Manual way:
-```bash
-# Set environment variables (if not using .env)
-export TWOPARK_EMAIL="your-email@example.com"
-export TWOPARK_PASSWORD="your-password"
-
-# Run with uv
-uv run python main.py
-
-# Or run directly with Python
-python main.py
+```json
+{
+  "license_plate": "51-PXPN",
+  "new_end_time": "2026-03-31T16:27:13Z"
+}
 ```
 
-The script will:
-1. Launch a visible Chrome browser window
-2. Navigate to the 2Park login page
-3. Automatically log in with your credentials
-4. Extract and display active reservations
-5. Show your current account balance
-6. Close the browser
+### Cancel a Booking
+
+```bash
+curl -X POST http://localhost:8090/api/bookings/51-PXPN/cancel \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```json
+{
+  "status": "cancelled",
+  "cancelled_at": "2026-03-31T13:30:00Z"
+}
+```
+
+## Error Handling
+
+All errors use a consistent JSON format:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable description"
+  }
+}
+```
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `INVALID_TOKEN` | 401 | Missing or invalid Bearer token |
+| `LOGIN_FAILED` | 401 | 2Park login failed (bad credentials or site down) |
+| `VALIDATION_ERROR` | 422 | Invalid request body (bad license plate, missing fields) |
+| `INVALID_TIME` | 400 | Unparseable `start_time` value |
+| `BOOKING_NOT_FOUND` | 404 | No active booking for the given plate |
+| `BOOKING_CONFLICT` | 409 | Active booking already exists for this plate |
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests (check `X-RateLimit-Reset` header) |
+| `TIMEOUT_ERROR` | 504 | Browser operation timed out |
+| `BROWSER_ERROR` | 500 | Browser automation failure |
+| `INTERNAL_ERROR` | 500 | Unexpected server error |
+
+### Rate Limit Headers
+
+Every response includes rate limit headers:
+
+```
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 8
+X-RateLimit-Reset: 45
+```
 
 ## Configuration
 
 ### Environment Variables
 
 **Required:**
-- `TWOPARK_EMAIL` - Your 2Park account email
-- `TWOPARK_PASSWORD` - Your 2Park account password
-- `API_TOKEN` - Bearer token for API authentication
 
-**Optional (Rate Limiting):**
-- `RATE_LIMIT_REQUESTS` - Max requests per window (default: 10)
-- `RATE_LIMIT_WINDOW_SECONDS` - Time window in seconds (default: 60)
+| Variable | Description |
+|----------|-------------|
+| `TWOPARK_EMAIL` | Your 2Park account email |
+| `TWOPARK_PASSWORD` | Your 2Park account password |
+| `API_TOKEN` | Bearer token for API authentication |
 
-**Optional (Timeouts - seconds, range 10-300):**
-- `BROWSER_TIMEOUT` - Browser navigation timeout (default: 30)
-- `NAVIGATION_TIMEOUT` - Page navigation timeout (default: 30)
-- `SELECTOR_TIMEOUT` - Selector waiting timeout (default: 10)
-- `SESSION_CACHE_TTL` - Session cache TTL in seconds (default: 300)
+**Optional:**
 
-**Optional (Logging):**
-- `LOG_LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
-- `LOG_FILE` - Log file path (default: logs/app.log)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8090` | API server port |
+| `RATE_LIMIT_REQUESTS` | `10` | Max requests per window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window (seconds) |
+| `BROWSER_TIMEOUT` | `30` | Browser launch timeout (10-300s) |
+| `NAVIGATION_TIMEOUT` | `30` | Page navigation timeout (10-300s) |
+| `SELECTOR_TIMEOUT` | `10` | Element selector timeout (10-300s) |
+| `LOG_LEVEL` | `INFO` | Logging level |
 
-### API Server Settings
-
-Edit `api.py` to configure:
-- **Host:** Default `0.0.0.0`
-- **Port:** Default `8000`
-- **Log level:** Default `info`
-
-### Browser Settings (CLI)
-
-You can modify browser behavior in `main.py`:
-- `headless=False` - Shows the browser window (set to `True` to hide it)
-- `slow_mo=50` - Slows down operations by 50ms for visibility
-- Window size: Default is 1920x1080
-
-## Output Examples
-
-### CLI Output
-
-```
-==================================================
-ACTIVE RESERVATIONS
-==================================================
-
-Reservation 1:
-  Name: John Doe
-  License Plate: AB-123-CD
-  Start Time: 09:00
-  End Time: 17:00
-
-==================================================
-ACCOUNT BALANCE
-==================================================
-€ 25.50
-==================================================
-```
-
-### API Response Examples
-
-**Get Balance:**
-```json
-{
-  "balance": 25.50,
-  "currency": "EUR",
-  "last_checked": "2025-01-05T14:00:00Z"
-}
-```
-
-**Create Booking:**
-```json
-{
-  "license_plate": "AB-123-CD",
-  "start_time": "2025-01-05T14:00:00Z",
-  "end_time": "2025-01-05T16:00:00Z",
-  "status": "active"
-}
-```
-
-**Error Response:**
-```json
-{
-  "error": {
-    "code": "BOOKING_CONFLICT",
-    "message": "Active booking already exists for AB-123-CD"
-  }
-}
-```
-
-## Security Notes
-
-- **Never commit your `.env` file or hardcode credentials** - it's already in `.gitignore`
-- Credentials are only stored in environment variables
-- The script does not store or transmit your credentials anywhere except to 2park.nl
-- **API Token:** Generate a secure random token for API authentication
-  ```bash
-  openssl rand -hex 32
-  ```
-- **Rate Limiting:** Configure via environment variables to prevent abuse
-- **Production:** Use HTTPS and consider rate limiting
-- **Access Control:** Don't expose the API directly to the internet
-
-## ⚠️ Important Disclaimer
-
-This project is a **personal hobby project** created for educational purposes.
-
-- This tool automates interaction with [2park.nl](https://mijn.2park.nl) using browser automation
-- **Use at your own risk** - Always check 2park.nl's Terms of Service
-- The author is **not affiliated** with 2park.nl
-- **Respect rate limits** - Don't abuse this tool
-- This is **not a production-ready solution** - Handle with care
-
-By using this software, you agree to:
-1. Review and comply with 2park.nl's Terms of Service
-2. Use this tool responsibly and ethically
-3. Not use this for commercial purposes without proper authorization
-4. Accept responsibility for any consequences of using this software
-
-## Troubleshooting
-
-### Browser crashes or fails to launch
-
-Try these solutions:
-1. Make sure you've installed Playwright browsers: `playwright install chromium`
-2. Ensure you have the necessary system dependencies (Playwright will tell you if any are missing)
-3. Check the logs for specific error messages
-
-### Timeout errors
-
-- Increase timeout values via environment variables (`BROWSER_TIMEOUT`, `NAVIGATION_TIMEOUT`, `SELECTOR_TIMEOUT`)
-- Check your internet connection
-- The website might be slow or down
-
-### Invalid license plate format
-
-The API validates Dutch license plate formats. Supported formats include:
-- Current EU format: `AB-12-CD`, `1-AB-23`
-- Historic format: `XX-XX-XX`
-- Use format like `AB-12-CD` or `1-AB-23`
-
-### Rate limit exceeded
-
-If you see rate limit errors:
-- Wait before retrying (check `X-RateLimit-Reset` header)
-- Increase `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_SECONDS` environment variables
-
-### Missing credentials error
-
-Make sure you've set the environment variables:
-```bash
-export TWOPARK_EMAIL="your-email@example.com"
-export TWOPARK_PASSWORD="your-password"
-```
-
-### Selectors not found
-
-The website might have changed its structure. Check the browser console for the actual element selectors being used.
-
-### Using the run script
-
-For the easiest experience, use the included `run.sh` script:
-```bash
-./run.sh
-```
-
-This handles credentials, browser installation checks, and proper error handling automatically.
-
-## Architecture
-
-### API Structure
-
-```
-api.py              # FastAPI application with endpoints
-scraper.py          # Stateless scraper for browser automation
-models.py           # Pydantic models for requests/responses
-errors.py           # Error codes and exception handling
-auth.py             # Bearer token authentication
-rate_limit.py       # Rate limiting middleware
-config.py           # Configuration loader (future)
-main.py             # CLI script (original functionality)
-```
-
-### Stateless Design
-
-Each API request:
-1. Authenticates the bearer token
-2. Launches a new browser session (or reuses cached session)
-3. Logs in to 2Park
-4. Performs the requested operation
-5. Cleans up all resources
-
-This ensures no memory leaks and horizontal scalability.
-
-### Session Caching
-
-For better performance, the API can cache login sessions:
-- Default TTL: 300 seconds (configurable via `SESSION_CACHE_TTL`)
-- Reduces request time by reusing existing logins
-- Automatic cleanup on session failure
-
-### Rate Limiting
-
-API requests are rate-limited by client IP:
-- Default: 10 requests per 60 seconds
-- Configurable via `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_SECONDS`
-- Returns 429 status code when limit exceeded
-- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
-
-### CLI Structure
-
-The CLI uses the `TwoParkChecker` class:
-- `launch_browser()` - Launches browser with proper configuration
-- `create_page()` - Creates a new page with viewport settings
-- `login()` - Handles the login process
-- `get_active_reservations()` - Extracts reservation data
-- `get_current_balance()` - Extracts account balance
-- `close()` - Properly closes the browser
-- `run()` - Main execution flow with error handling
-
-## Best Practices Implemented
-
-✅ **Stateless API architecture**  
-✅ **Bearer token authentication**  
-✅ **License plate validation** for Dutch formats  
-✅ **Rate limiting middleware**  
-✅ **Standardized error responses** with error codes  
-✅ **Configurable timeouts** via environment variables  
-✅ **Proper error handling** with try-catch blocks  
-✅ **Comprehensive logging** with request IDs  
-✅ **Environment variables** for sensitive data  
-✅ **Type hints** throughout codebase  
-✅ **Pydantic models** for validation  
-✅ **Browser cleanup** in context managers  
-✅ **RESTful API design**  
-✅ **OpenAPI documentation** (Swagger/ReDoc)  
-✅ **CORS middleware** for Home Assistant  
-✅ **Class-based organization**  
-✅ **Graceful degradation**  
-
-## Files Overview
-
-```
-2park_checker/
-├── api.py              # FastAPI REST API server
-├── scraper.py          # Stateless browser automation
-├── models.py           # Pydantic request/response models
-├── errors.py           # Error codes and exceptions
-├── auth.py             # Authentication middleware
-├── rate_limit.py       # Rate limiting middleware
-├── main.py             # CLI checker script
-├── run.sh              # Convenience script for CLI
-├── API.md              # Complete API documentation
-├── README.md           # This file
-├── ROADMAP.md          # Project roadmap and future plans
-├── CHANGES.md          # Change log and migration guide
-├── QUICKSTART.md       # Quick reference guide
-├── .env.example        # Environment variable template
-├── Dockerfile          # Docker image definition
-├── docker-compose.yml  # Docker Compose configuration
-└── pyproject.toml      # Python dependencies
-```
-
-## Documentation
-
-- **[API.md](API.md)** - Complete API documentation with examples
-- **[QUICKSTART.md](QUICKSTART.md)** - Quick reference for CLI usage
-- **[CHANGES.md](CHANGES.md)** - Migration guide from old version
-
-## Testing
-
-### Running Unit Tests
-
-Install dev dependencies and run tests:
+## Docker
 
 ```bash
-# Install dev dependencies
-uv sync --extra dev
+# Build and start
+docker compose up -d
 
-# Or install pytest directly
-uv add --dev pytest
-
-# Run all tests
-pytest tests/
-
-# Run with verbose output
-pytest tests/ -v
-
-# Run specific test file
-pytest tests/test_license_plate.py
-```
-
-### Test Coverage
-
-| Test File | Tests | Status |
-|-----------|-------|--------|
-| `test_license_plate.py` | 4 | ✅ Passing |
-| `test_time_parsing.py` | 3 | ✅ Passing |
-| **Total** | **7** | **✅ Passing** |
-
-### Integration Tests
-
-The `test_api.py` script tests the running API server. Start the server first:
-
-```bash
-# Start the API server
-python api.py
-
-# In another terminal, run integration tests
-python test_api.py
-```
-
-**Note:** Be careful with booking operations - they will create real bookings on your 2Park account!
-
----
-
-## Docker Deployment
-
-### Quick Start with Docker Compose
-
-```bash
-# Copy environment example
-cp .env.example .env
-
-# Edit .env with your credentials
-nano .env
-
-# Build and run
-docker-compose up -d
-```
-
-### Environment Variables
-
-```bash
-# Required
-TWOPARK_EMAIL=your-email@example.com
-TWOPARK_PASSWORD=your-password
-API_TOKEN=your-secure-token
-
-# Optional (defaults shown)
-RATE_LIMIT_REQUESTS=10
-RATE_LIMIT_WINDOW_SECONDS=60
-BROWSER_TIMEOUT=30
-NAVIGATION_TIMEOUT=30
-SELECTOR_TIMEOUT=10
-SESSION_CACHE_TTL=300
-LOG_LEVEL=INFO
-```
-
-### Accessing the API
-
-Once running, the API is available at `http://localhost:8080`:
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Get balance
-curl -H "Authorization: Bearer your-token" \
-  http://localhost:8080/api/account/balance
-```
-
-### Viewing Logs
-
-```bash
-# View container logs
+# View logs
 docker logs -f 2park-api
-```
 
-### Stop/Start
-
-```bash
 # Stop
-docker-compose down
+docker compose down
 
-# Start
-docker-compose up -d
-
-# Restart
-docker-compose restart
+# Rebuild after code changes
+docker compose up -d --build
 ```
+
+The API is available at `http://localhost:8090`. The container includes a health check that runs every 30 seconds.
 
 ## Home Assistant Integration
 
-Automate parking bookings based on presence detection (WiFi, Bluetooth, etc.) with Home Assistant.
+The API is designed to work with Home Assistant's `rest` and `rest_command` integrations for automated parking based on presence detection.
 
-### Overview
+### Sensors: Balance and Bookings
 
-The 2Park API integrates seamlessly with Home Assistant to automate parking reservations when family members arrive home. The system can:
-- Detect presence via WiFi, Bluetooth, or other methods
-- Look up the person's license plate and default booking duration
-- Check account balance before booking
-- Alert admins if balance is insufficient
-- Create parking bookings automatically
-
-### Setup
-
-#### 1. Add REST Commands to `configuration.yaml`
+Add to `configuration.yaml`:
 
 ```yaml
-rest_command:
-  2park_get_balance:
-    url: "http://YOUR_SERVER_IP:8090/api/account/balance"
+rest:
+  - resource: "http://YOUR_2PARK_SERVER:8090/api/account/balance"
     method: GET
     headers:
       Authorization: "Bearer YOUR_API_TOKEN"
-    content_type: application/json
+    scan_interval: 7200
+    sensor:
+      - name: "2Park Balance"
+        value_template: "{{ value_json.balance }}"
+        device_class: monetary
+        unit_of_measurement: "EUR"
+        icon: "mdi:cash"
 
+  - resource: "http://YOUR_2PARK_SERVER:8090/api/bookings"
+    method: GET
+    headers:
+      Authorization: "Bearer YOUR_API_TOKEN"
+    scan_interval: 7200
+    sensor:
+      - name: "2Park Active Bookings"
+        value_template: "{{ value_json.count }}"
+        json_attributes:
+          - bookings
+        icon: "mdi:car"
+
+template:
+  - binary_sensor:
+      - name: "2Park Low Balance"
+        device_class: problem
+        icon: "mdi:alert-circle"
+        state: "{{ states('sensor.2park_balance') | float(0) < 5.0 }}"
+```
+
+### REST Commands
+
+```yaml
+rest_command:
   2park_create_booking:
-    url: "http://YOUR_SERVER_IP:8090/api/bookings"
+    url: "http://YOUR_2PARK_SERVER:8090/api/bookings"
     method: POST
     headers:
       Authorization: "Bearer YOUR_API_TOKEN"
       Content-Type: "application/json"
-    data: |
-      {
-        "license_plate": "{{ license_plate }}",
-        "start_time": "now",
-        "duration_minutes": {{ duration_minutes }}
-      }
+    payload: >
+      {"license_plate": "{{ license_plate }}", "start_time": "now", "duration_minutes": {{ duration_minutes }}}
+    timeout: 120
 
-  2park_list_bookings:
-    url: "http://YOUR_SERVER_IP:8090/api/bookings"
-    method: GET
+  2park_cancel_booking:
+    url: "http://YOUR_2PARK_SERVER:8090/api/bookings/{{ license_plate }}/cancel"
+    method: POST
     headers:
       Authorization: "Bearer YOUR_API_TOKEN"
-    content_type: application/json
+    timeout: 120
+
+  2park_extend_booking:
+    url: "http://YOUR_2PARK_SERVER:8090/api/bookings/{{ license_plate }}/extend"
+    method: POST
+    headers:
+      Authorization: "Bearer YOUR_API_TOKEN"
+      Content-Type: "application/json"
+    payload: >
+      {"additional_minutes": {{ additional_minutes }}}
+    timeout: 120
 ```
 
-#### 2. Define People and Their Parking Details
+**Important:** Set `timeout: 120` on all rest commands. Each API call launches a headless browser and logs in to 2park.nl, which takes 5-15 seconds. The default Home Assistant timeout of 10 seconds is too short.
 
-Create a configuration file (e.g., `packages/parking.yaml`) or use secrets:
-
-```yaml
-# configuration.yaml or packages/parking.yaml
-input_select:
-  parking_default_duration:
-    name: "Default Parking Duration"
-    options:
-      - "60"
-      - "120"
-      - "180"
-      - "240"
-    initial: "120"
-
-# Store license plates in secrets.yaml for security
-# secrets.yaml:
-#   parking_people:
-#     mark:
-#       license_plate: "51PXPN"
-#       default_duration: 120
-#     janneke:
-#       license_plate: "AB-12-CD"
-#       default_duration: 60
-```
-
-#### 3. Create Helper Template Entities
+### Automation: Book on Arrival
 
 ```yaml
-# configuration.yaml
-template:
-  - sensor:
-      - name: "2Park Balance"
-        unique_id: "2park_balance"
-        unit_of_measurement: "EUR"
-        state_class: "measurement"
-        icon: "mdi:cash"
-        device_class: "monetary"
-        scan_interval: 300
-        command:
-          url: "http://YOUR_SERVER_IP:8090/api/account/balance"
-          method: GET
-          headers:
-            Authorization: "Bearer YOUR_API_TOKEN"
-          value_template: "{{ value_json.balance }}"
-
-  - binary_sensor:
-      - name: "2Park Low Balance"
-        device_class: "problem"
-        icon: "mdi:alert-circle"
-        value_template: "{{ states('sensor.2park_balance') | float(0) < 5.0 }}"
-```
-
-### Automation Examples
-
-#### Auto-Book When Person Arrives
-
-```yaml
-# automations/parking.yaml
 alias: "Parking - Auto Book on Arrival"
-description: "Automatically book parking when a person arrives home"
 trigger:
   - platform: state
     entity_id:
@@ -666,70 +304,35 @@ trigger:
     from: "not_home"
     to: "home"
 condition:
-  - condition: template
-    value_template: >
-      {{ states('binary_sensor.2park_low_balance') != 'on' }}
+  - condition: numeric_state
+    entity_id: sensor.2park_balance
+    above: 5.0
 action:
-  - service: rest_command.2park_get_balance
-    target:
-      entity_id: sensor.2park_balance
-    data:
-      response_variable: balance_response
-
+  - variables:
+      plates:
+        person.mark: "51PXPN"
+        person.janneke: "AB-12-CD"
+      durations:
+        person.mark: 120
+        person.janneke: 60
   - service: rest_command.2park_create_booking
     data:
-      license_plate: >
-        {% if trigger.entity_id == 'person.mark' %}
-          51PXPN
-        {% elif trigger.entity_id == 'person.janneke' %}
-          AB-12-CD
-        {% endif %}
-      duration_minutes: >
-        {% if trigger.entity_id == 'person.mark' %}
-          120
-        {% elif trigger.entity_id == 'person.janneke' %}
-          60
-        {% endif %}
-    response_variable: booking_response
-
-  - service: notify.persistent_notification
+      license_plate: "{{ plates[trigger.entity_id] }}"
+      duration_minutes: "{{ durations[trigger.entity_id] }}"
+    response_variable: result
+  - service: notify.notify
     data:
       title: "Parking Booked"
       message: >
-        Parking booked for {{ trigger.friendly_name }}
-        License plate: {{ license_plate }}
-        Duration: {{ duration_minutes }} minutes
-      target:
-        - persistent_notification
+        Parking booked for {{ trigger.to_state.name }}
+        ({{ plates[trigger.entity_id] }}) for {{ durations[trigger.entity_id] }} minutes.
 mode: single
 ```
 
-#### Alert on Low Balance
+### Automation: Cancel on Departure
 
 ```yaml
-alias: "Parking - Alert on Low Balance"
-description: "Notify admins when 2Park balance is low"
-trigger:
-  - platform: state
-    entity_id: binary_sensor.2park_low_balance
-    from: "off"
-    to: "on"
-action:
-  - service: notify.notify
-    data:
-      title: "⚠️ Low Parking Balance"
-      message: >
-        Your 2Park account balance is low!
-        Current balance: {{ states('sensor.2park_balance') }} EUR
-        Please top up to ensure automatic bookings continue working.
-mode: single
-```
-
-#### Cancel Booking When Person Leaves
-
-```yaml
-alias: "Parking - Cancel Booking on Departure"
-description: "Cancel parking when person leaves home"
+alias: "Parking - Cancel on Departure"
 trigger:
   - platform: state
     entity_id:
@@ -737,116 +340,144 @@ trigger:
       - person.janneke
     from: "home"
     to: "not_home"
-condition:
-  - condition: template
-    value_template: "{{ states('sensor.2park_active_bookings') | int(0) > 0 }}"
 action:
-  - service: rest_command.2park_list_bookings
-    data:
-      response_variable: bookings
-
+  - variables:
+      plates:
+        person.mark: "51PXPN"
+        person.janneke: "AB-12-CD"
   - service: rest_command.2park_cancel_booking
     data:
-      license_plate: >
-        {% for booking in bookings_json.bookings %}
-          {% if booking.license_plate in ['51PXPN', 'AB-12-CD'] %}
-            {{ booking.license_plate }}
-          {% endif %}
-        {% endfor %}
+      license_plate: "{{ plates[trigger.entity_id] }}"
 mode: single
 ```
 
-### Advanced: Dynamic License Plate Lookup
-
-For a more maintainable setup, store person-to-license-plate mappings in a config file:
+### Automation: Low Balance Alert
 
 ```yaml
-# packages/parking_config.yaml
-# Create a JSON file at /config/parking_people.json:
-# {
-#   "mark": {"license_plate": "51PXPN", "default_duration": 120},
-#   "janneke": {"license_plate": "AB-12-CD", "default_duration": 60}
-# }
-
-rest:
-  - resource: "http://localhost:8090/api/bookings"
-    scan_interval: 300
-    json_attributes_path: "$"
-    json_attributes:
-      - bookings
-
-template:
-  - sensor:
-      - name: "Person License Plate"
-        unique_id: "parking_license_plate_template"
-        icon: "mdi:car"
-        value_template: >
-          {% set person_name = trigger.entity_id.split('.')[-1] %}
-          {% set plates = {
-            'mark': '51PXPN',
-            'janneke': 'AB-12-CD'
-          } %}
-          {{ plates.get(person_name, 'Unknown') }}
-```
-
-### API Endpoints for Home Assistant
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/account/balance` | GET | Check current balance |
-| `/api/bookings` | GET | List all active bookings |
-| `/api/bookings` | POST | Create new booking |
-| `/api/bookings/{plate}/extend` | POST | Extend existing booking |
-| `/api/bookings/{plate}/cancel` | POST | Cancel booking |
-
-### Example: Check Balance Before Booking
-
-```yaml
-alias: "Parking - Safe Auto Book"
+alias: "Parking - Low Balance Alert"
 trigger:
   - platform: state
-    entity_id: person.mark
-    from: "not_home"
-    to: "home"
+    entity_id: binary_sensor.2park_low_balance
+    to: "on"
 action:
-  # Step 1: Check balance
-  - service: rest_command.2park_get_balance
-    data:
-      response_variable: balance_check
-
-  # Step 2: Only book if balance is sufficient
-  - condition: template
-    value_template: "{{ balance_check.json.balance >= 5.0 }}"
-
-  # Step 3: Create booking
-  - service: rest_command.2park_create_booking
-    data:
-      license_plate: "51PXPN"
-      duration_minutes: 120
-
-  # Step 4: Notify on success
   - service: notify.notify
     data:
-      title: "Parking Booked"
-      message: "Parking reserved for Mark (51PXPN) for 2 hours"
+      title: "Low Parking Balance"
+      message: >
+        2Park balance is {{ states('sensor.2park_balance') }} EUR.
+        Top up to keep automatic parking working.
 mode: single
 ```
 
-### Troubleshooting
+### Dashboard Card
+
+```yaml
+type: entities
+title: 2Park Parking
+entities:
+  - entity: sensor.2park_balance
+    name: Balance
+    icon: mdi:cash
+  - entity: sensor.2park_active_bookings
+    name: Active Bookings
+    icon: mdi:car
+  - entity: binary_sensor.2park_low_balance
+    name: Low Balance
+    icon: mdi:alert-circle
+```
+
+### Home Assistant Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Connection refused | Ensure API server is running and accessible from Home Assistant |
-| Unauthorized | Verify API token in rest_command configuration |
-| Booking failed | Check balance and ensure no duplicate active bookings |
-| Timeout errors | Increase `timeout:` in rest_command configuration |
+| Timeout errors | Set `timeout: 120` on all rest_commands. Browser operations take 5-15s. |
+| Connection refused | Ensure API container is running and reachable from HA network |
+| `LOGIN_FAILED` errors | Check 2Park credentials. The site may be temporarily down. |
+| Stale balance data | Lower `scan_interval` or call `homeassistant.update_entity` |
+| Rate limit exceeded | Wait for `X-RateLimit-Reset` seconds, or increase `RATE_LIMIT_REQUESTS` |
 
----
+## CLI Usage
 
-## Roadmap
+The CLI tool displays active reservations and balance in your terminal:
 
-See [ROADMAP.md](ROADMAP.md) for planned features and improvements.
+```bash
+./run.sh
+```
 
-## License
+Or manually:
 
-This is a personal automation tool. Use responsibly and in accordance with 2Park's terms of service.
+```bash
+uv run python main.py
+```
+
+```
+==================================================
+ACTIVE RESERVATIONS
+==================================================
+Reservation 1:
+  Name: John Doe
+  License Plate: AB-123-CD
+  Start Time: 09:00
+  End Time: 17:00
+==================================================
+ACCOUNT BALANCE
+==================================================
+EUR 25.50
+==================================================
+```
+
+## Architecture
+
+```
+api.py              # FastAPI REST API server
+scraper.py          # Stateless Playwright browser automation
+models.py           # Pydantic request/response models
+errors.py           # Error codes and exception handling
+auth.py             # Bearer token authentication
+rate_limit.py       # Rate limiting middleware
+main.py             # CLI script
+run.sh              # CLI convenience script
+Dockerfile          # Container image
+docker-compose.yml  # Docker Compose configuration
+```
+
+Each API request independently: authenticates the token, launches a headless browser, logs in to 2Park, performs the operation, and cleans up. This stateless design avoids session leaks and enables horizontal scaling.
+
+## Testing
+
+```bash
+uv sync --extra dev
+pytest tests/ -v
+```
+
+| Test File | Tests |
+|-----------|-------|
+| `test_license_plate.py` | 4 |
+| `test_time_parsing.py` | 3 |
+
+Integration tests against a running server:
+
+```bash
+docker compose up -d
+python test_api.py
+```
+
+**Warning:** Booking operations in `test_api.py` create real bookings on your 2Park account.
+
+## Security
+
+- Never commit `.env` (already in `.gitignore`)
+- Generate a strong API token: `openssl rand -hex 32`
+- Don't expose the API directly to the internet without HTTPS
+- Credentials are only transmitted to 2park.nl via the browser session
+
+## Disclaimer
+
+This is a personal hobby project. It automates interaction with 2park.nl using browser automation. Use at your own risk and in accordance with 2park.nl's Terms of Service. The author is not affiliated with 2park.nl.
+
+## Documentation
+
+- **[API.md](API.md)** - Complete API reference
+- **[QUICKSTART.md](QUICKSTART.md)** - CLI quick reference
+- **[CHANGES.md](CHANGES.md)** - Migration guide from previous version
+- **[ROADMAP.md](ROADMAP.md)** - Planned features

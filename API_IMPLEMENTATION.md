@@ -333,13 +333,13 @@ python api.py
 python test_api.py
 
 # Or use curl
-curl -X GET "http://localhost:8000/api/account/balance" \
+curl -X GET "http://localhost:8090/api/account/balance" \
   -H "Authorization: Bearer your-token"
 ```
 
 ### Interactive Testing
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8090/docs
+- ReDoc: http://localhost:8090/redoc
 
 ## Deployment Options
 
@@ -369,7 +369,7 @@ FROM python:3.12-slim
 ### 4. Behind Reverse Proxy (nginx)
 ```nginx
 location /api {
-    proxy_pass http://localhost:8000;
+    proxy_pass http://localhost:8090;
     proxy_set_header Authorization $http_authorization;
 }
 ```
@@ -425,12 +425,12 @@ import requests
 headers = {"Authorization": f"Bearer {token}"}
 
 # Get balance
-r = requests.get("http://localhost:8000/api/account/balance", headers=headers)
+r = requests.get("http://localhost:8090/api/account/balance", headers=headers)
 print(r.json()["balance"])
 
 # Create booking
 r = requests.post(
-    "http://localhost:8000/api/bookings",
+    "http://localhost:8090/api/bookings",
     headers=headers,
     json={
         "license_plate": "AB-123-CD",
@@ -445,14 +445,14 @@ print(r.json())
 ```bash
 # Get balance
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8000/api/account/balance
+  http://localhost:8090/api/account/balance
 
 # Create booking
 curl -X POST \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"license_plate":"AB-123","start_time":"now","duration_minutes":60}' \
-  http://localhost:8000/api/bookings
+  http://localhost:8090/api/bookings
 ```
 
 ## Next Steps / Future Enhancements
@@ -510,7 +510,7 @@ python test_api.py
 
 # 5. Use
 curl -H "Authorization: Bearer $API_TOKEN" \
-  http://localhost:8000/api/account/balance
+  http://localhost:8090/api/account/balance
 ```
 
 🎉 **API is ready to use!**

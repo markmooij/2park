@@ -92,9 +92,9 @@ Copy the output and paste it as `API_TOKEN` in your `.env` file.
 
 Server is running!
 
-  API Base URL:      http://localhost:8000
-  Swagger UI:        http://localhost:8000/docs
-  ReDoc:             http://localhost:8000/redoc
+  API Base URL:      http://localhost:8090
+  Swagger UI:        http://localhost:8090/docs
+  ReDoc:             http://localhost:8090/redoc
 ```
 
 ### Step 5: Test Your API
@@ -106,11 +106,11 @@ Open a new terminal and try this:
 export API_TOKEN="your-token-from-env-file"
 
 # Test the health check (no auth required)
-curl http://localhost:8000/health
+curl http://localhost:8090/health
 
 # Get your account balance
 curl -H "Authorization: Bearer $API_TOKEN" \
-  http://localhost:8000/api/account/balance
+  http://localhost:8090/api/account/balance
 ```
 
 **Expected response:**
@@ -131,15 +131,15 @@ curl -H "Authorization: Bearer $API_TOKEN" \
 ### Explore the Interactive Documentation
 
 Open your browser and visit:
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+- **Swagger UI:** http://localhost:8090/docs
+- **ReDoc:** http://localhost:8090/redoc
 
 These provide interactive API testing right in your browser!
 
 ### Try Creating a Booking
 
 ```bash
-curl -X POST "http://localhost:8000/api/bookings" \
+curl -X POST "http://localhost:8090/api/bookings" \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -162,7 +162,7 @@ curl -X POST "http://localhost:8000/api/bookings" \
 ### Try Extending a Booking
 
 ```bash
-curl -X POST "http://localhost:8000/api/bookings/AB-123-CD/extend" \
+curl -X POST "http://localhost:8090/api/bookings/AB-123-CD/extend" \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -173,7 +173,7 @@ curl -X POST "http://localhost:8000/api/bookings/AB-123-CD/extend" \
 ### Try Cancelling a Booking
 
 ```bash
-curl -X POST "http://localhost:8000/api/bookings/AB-123-CD/cancel" \
+curl -X POST "http://localhost:8090/api/bookings/AB-123-CD/cancel" \
   -H "Authorization: Bearer $API_TOKEN"
 ```
 
@@ -234,13 +234,13 @@ Error responses return standardized errors:
 ```bash
 # 1. Check balance
 curl -H "Authorization: Bearer $API_TOKEN" \
-  http://localhost:8000/api/account/balance
+  http://localhost:8090/api/account/balance
 
 # 2. If balance is sufficient, create booking
 curl -X POST -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"license_plate":"AB-123","start_time":"now","duration_minutes":120}' \
-  http://localhost:8000/api/bookings
+  http://localhost:8090/api/bookings
 ```
 
 ### Use Case 2: Schedule Future Parking
@@ -254,7 +254,7 @@ curl -X POST -H "Authorization: Bearer $API_TOKEN" \
     "start_time": "2025-01-06T09:00:00Z",
     "duration_minutes": 480
   }' \
-  http://localhost:8000/api/bookings
+  http://localhost:8090/api/bookings
 ```
 
 ### Use Case 3: Extend Running Late
@@ -264,7 +264,7 @@ curl -X POST -H "Authorization: Bearer $API_TOKEN" \
 curl -X POST -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"additional_minutes": 30}' \
-  http://localhost:8000/api/bookings/AB-123-CD/extend
+  http://localhost:8090/api/bookings/AB-123-CD/extend
 ```
 
 ### Use Case 4: Plans Changed, Cancel
@@ -272,7 +272,7 @@ curl -X POST -H "Authorization: Bearer $API_TOKEN" \
 ```bash
 # Cancel if you don't need the spot anymore
 curl -X POST -H "Authorization: Bearer $API_TOKEN" \
-  http://localhost:8000/api/bookings/AB-123-CD/cancel
+  http://localhost:8090/api/bookings/AB-123-CD/cancel
 ```
 
 ---
@@ -285,7 +285,7 @@ curl -X POST -H "Authorization: Bearer $API_TOKEN" \
 import requests
 import os
 
-API_BASE = "http://localhost:8000"
+API_BASE = "http://localhost:8090"
 API_TOKEN = os.getenv("API_TOKEN")
 
 headers = {
@@ -319,7 +319,7 @@ print(f"Booking created until {booking['end_time']}")
 ```javascript
 const axios = require('axios');
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8090';
 const API_TOKEN = process.env.API_TOKEN;
 
 const headers = {
@@ -362,7 +362,7 @@ API_TOKEN="your-token"
 LICENSE_PLATE="AB-123-CD"
 
 # Create 2-hour booking
-curl -X POST "http://localhost:8000/api/bookings" \
+curl -X POST "http://localhost:8090/api/bookings" \
   -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -401,7 +401,7 @@ API_TOKEN=...
 
 Check if it's listening:
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8090/health
 ```
 
 ### Problem: "Invalid API token"
@@ -423,7 +423,7 @@ curl http://localhost:8000/health
 **Solution:**
 ```bash
 # Kill the existing process
-lsof -ti:8000 | xargs kill -9
+lsof -ti:8090 | xargs kill -9
 
 # Or use a different port in api.py:
 # uvicorn.run("api:app", port=8001)
@@ -504,7 +504,7 @@ This will:
 - **[API.md](API.md)** - Complete API documentation
 - **[README.md](README.md)** - Full project documentation
 - **[API_IMPLEMENTATION.md](API_IMPLEMENTATION.md)** - Technical details
-- **Swagger UI** - http://localhost:8000/docs (when server is running)
+- **Swagger UI** - http://localhost:8090/docs (when server is running)
 
 ---
 
@@ -586,23 +586,23 @@ openssl rand -hex 32  # Generate token
 
 # Get balance
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8000/api/account/balance
+  http://localhost:8090/api/account/balance
 
 # Create booking (now, 2 hours)
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"license_plate":"AB-123","start_time":"now","duration_minutes":120}' \
-  http://localhost:8000/api/bookings
+  http://localhost:8090/api/bookings
 
 # Extend (30 minutes)
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"additional_minutes":30}' \
-  http://localhost:8000/api/bookings/AB-123/extend
+  http://localhost:8090/api/bookings/AB-123/extend
 
 # Cancel
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8000/api/bookings/AB-123/cancel
+  http://localhost:8090/api/bookings/AB-123/cancel
 ```
 
 ---

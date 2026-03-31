@@ -15,7 +15,7 @@ except ImportError:
     requests = None
 
 # Configuration
-API_BASE = "http://localhost:8000"
+API_BASE = "http://localhost:8090"
 API_TOKEN = os.getenv("API_TOKEN", "your-token-here")
 
 # Headers with authentication
