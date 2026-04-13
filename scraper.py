@@ -557,12 +557,24 @@ class TwoParkScraper:
                     break
 
             if start_time_input:
-                # Try to fill with "now" first, then ISO format
+                # Try multiple formats for start time
+                # First try "now" (common pattern for Dutch websites)
                 try:
                     await start_time_input.fill("now")
-                except:
-                    formatted_start = start_time.strftime("%Y-%m-%dT%H:%M")
-                    await start_time_input.fill(formatted_start)
+                    logger.info("Set start time to 'now'")
+                except Exception as e:
+                    logger.warning(f"'now' format failed: {e}, trying time-only format")
+                    # Try HH:MM format
+                    formatted_start = start_time.strftime("%H:%M")
+                    try:
+                        await start_time_input.fill(formatted_start)
+                        logger.info(f"Set start time to: {formatted_start} (HH:MM format)")
+                    except Exception as e2:
+                        logger.warning(f"HH:MM format failed: {e2}, trying full datetime format")
+                        # Fallback to full ISO format
+                        formatted_start = start_time.strftime("%Y-%m-%dT%H:%M")
+                        await start_time_input.fill(formatted_start)
+                        logger.info(f"Set start time to: {formatted_start} (ISO format)")
 
             # Fill in end time (preferred) or duration
             end_time_minutes = int((end_time - start_time).total_seconds() / 60)
@@ -583,17 +595,27 @@ class TwoParkScraper:
                     break
 
             if end_time_input:
-                formatted_end = end_time.strftime("%Y-%m-%dT%H:%M")
-                await end_time_input.fill(formatted_end)
-                logger.info(f"Set end time to: {formatted_end}")
+                # Try multiple formats - website might expect HH:MM or full datetime
+                # First try HH:MM format (most common for Dutch websites)
+                formatted_end = end_time.strftime("%H:%M")
+                try:
+                    await end_time_input.fill(formatted_end)
+                    logger.info(f"Set end time to: {formatted_end} (HH:MM format)")
+                except Exception as e:
+                    logger.warning(f"HH:MM format failed: {e}, trying full datetime format")
+                    # Fallback to full ISO format
+                    formatted_end = end_time.strftime("%Y-%m-%dT%H:%M")
+                    await end_time_input.fill(formatted_end)
+                    logger.info(f"Set end time to: {formatted_end} (ISO format)")
             else:
-                # Try duration field
+                # Try duration field - this is more reliable than end time
                 duration_selectors = [
                     "#newParkingActions_duration",
                     "input[name*='duration']",
                     "input[name*='duur']",  # Dutch for duration
                     ".duration",
                     "select[name*='duration']",
+                    "input[type='number']",  # Generic number input
                 ]
                 duration_input = None
                 for selector in duration_selectors:
@@ -607,6 +629,17 @@ class TwoParkScraper:
                     logger.info(f"Set duration to: {end_time_minutes} minutes")
                 else:
                     logger.warning("No end time or duration field found - using defaults")
+                    # Log available inputs for debugging
+                    all_inputs = await self.page.query_selector_all("input, select")
+                    for i, inp in enumerate(all_inputs[:15]):
+                        try:
+                            inp_id = await inp.get_attribute("id")
+                            inp_name = await inp.get_attribute("name")
+                            inp_type = await inp.get_attribute("type")
+                            inp_placeholder = await inp.get_attribute("placeholder")
+                            logger.info(f"  Input {i}: id={inp_id}, name={inp_name}, type={inp_type}, placeholder={inp_placeholder}")
+                        except Exception:
+                            pass
 
             # Submit the form
             submit_button = await self.page.query_selector(
