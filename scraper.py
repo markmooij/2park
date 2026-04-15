@@ -579,6 +579,8 @@ class TwoParkScraper:
             # Fill in end time (preferred) or duration
             end_time_minutes = int((end_time - start_time).total_seconds() / 60)
             logger.info(f"Booking end time: {end_time} ({end_time_minutes} minutes from start)")
+            logger.info(f"Start time: {start_time}")
+            logger.info(f"Calculated duration: {end_time_minutes} minutes")
 
             # Try end time field first
             end_time_selectors = [
@@ -594,9 +596,57 @@ class TwoParkScraper:
                     logger.info(f"Found end time input with selector: {selector}")
                     break
 
-            if end_time_input:
+            # Try duration field FIRST - this is more reliable than end time
+            # Many parking websites calculate end time based on duration, not absolute time
+            duration_selectors = [
+                "#newParkingActions_duration",
+                "input[name*='duration']",
+                "input[name*='duur']",  # Dutch for duration
+                "input[name*='time']",  # Generic time field
+                "input[name*='minutes']",  # Minutes field
+                ".duration",
+                "select[name*='duration']",
+                "input[type='number']",  # Generic number input
+            ]
+            duration_input = None
+            for selector in duration_selectors:
+                duration_input = await self.page.query_selector(selector)
+                if duration_input:
+                    logger.info(f"Found duration input with selector: {selector}")
+                    break
+
+            if duration_input:
+                # Use duration field - this is the most reliable method
+                duration_value = str(end_time_minutes)
+                logger.info(f"Found duration input, filling with: {duration_value} minutes")
+                await duration_input.fill(duration_value)
+                
+                # Trigger change event (some websites require this to update internal state)
+                try:
+                    await duration_input.dispatch_event("change")
+                    await duration_input.dispatch_event("input")
+                    logger.info("Triggered change/input events on duration field")
+                except Exception as e:
+                    logger.warning(f"Could not trigger events on duration field: {e}")
+                
+                # Verify the value was set
+                try:
+                    actual_value = await duration_input.input_value()
+                    logger.info(f"Duration field actual value after fill: {actual_value}")
+                except Exception as e:
+                    logger.warning(f"Could not verify duration field value: {e}")
+                
+                # Also try to fill end time if available (some websites use both)
+                if end_time_input:
+                    formatted_end = end_time.strftime("%H:%M")
+                    try:
+                        await end_time_input.fill(formatted_end)
+                        logger.info(f"Also set end time to: {formatted_end} (HH:MM format)")
+                    except Exception as e:
+                        logger.warning(f"End time fill failed: {e}")
+            elif end_time_input:
+                # No duration field, try end time field
                 # Try multiple formats - website might expect HH:MM or full datetime
-                # First try HH:MM format (most common for Dutch websites)
                 formatted_end = end_time.strftime("%H:%M")
                 try:
                     await end_time_input.fill(formatted_end)
@@ -608,38 +658,18 @@ class TwoParkScraper:
                     await end_time_input.fill(formatted_end)
                     logger.info(f"Set end time to: {formatted_end} (ISO format)")
             else:
-                # Try duration field - this is more reliable than end time
-                duration_selectors = [
-                    "#newParkingActions_duration",
-                    "input[name*='duration']",
-                    "input[name*='duur']",  # Dutch for duration
-                    ".duration",
-                    "select[name*='duration']",
-                    "input[type='number']",  # Generic number input
-                ]
-                duration_input = None
-                for selector in duration_selectors:
-                    duration_input = await self.page.query_selector(selector)
-                    if duration_input:
-                        logger.info(f"Found duration input with selector: {selector}")
-                        break
-
-                if duration_input:
-                    await duration_input.fill(str(end_time_minutes))
-                    logger.info(f"Set duration to: {end_time_minutes} minutes")
-                else:
-                    logger.warning("No end time or duration field found - using defaults")
-                    # Log available inputs for debugging
-                    all_inputs = await self.page.query_selector_all("input, select")
-                    for i, inp in enumerate(all_inputs[:15]):
-                        try:
-                            inp_id = await inp.get_attribute("id")
-                            inp_name = await inp.get_attribute("name")
-                            inp_type = await inp.get_attribute("type")
-                            inp_placeholder = await inp.get_attribute("placeholder")
-                            logger.info(f"  Input {i}: id={inp_id}, name={inp_name}, type={inp_type}, placeholder={inp_placeholder}")
-                        except Exception:
-                            pass
+                logger.warning("No end time or duration field found - using defaults")
+                # Log available inputs for debugging
+                all_inputs = await self.page.query_selector_all("input, select")
+                for i, inp in enumerate(all_inputs[:15]):
+                    try:
+                        inp_id = await inp.get_attribute("id")
+                        inp_name = await inp.get_attribute("name")
+                        inp_type = await inp.get_attribute("type")
+                        inp_placeholder = await inp.get_attribute("placeholder")
+                        logger.info(f"  Input {i}: id={inp_id}, name={inp_name}, type={inp_type}, placeholder={inp_placeholder}")
+                    except Exception:
+                        pass
 
             # Submit the form
             submit_button = await self.page.query_selector(
