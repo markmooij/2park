@@ -4,7 +4,7 @@
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-05-12
 **Review Level:** 2
-**Review Counter:** 3
+**Review Counter:** 4
 **Iteration:** 1
 **Size:** M
 
@@ -34,7 +34,7 @@
 ---
 
 ### Step 2: Add `/health/scraper` Endpoint to `api.py`
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Create `GET /health/scraper` endpoint
 - [x] Return HTTP 200 with status
@@ -45,10 +45,10 @@
 ---
 
 ### Step 3: Add `SELECTOR_MISMATCH` Error Code
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
-- [ ] Add error code to `ErrorCode` enum (if needed)
-- [ ] Create exception class (if needed)
+- [x] Add error code to `ErrorCode` enum
+- [x] Create `SelectorMismatchException` class
 
 ---
 
@@ -104,3 +104,4 @@
 | 2026-05-12 22:16 | Review R001 | plan Step 1: APPROVE |
 | 2026-05-12 22:18 | Review R002 | code Step 1: APPROVE |
 | 2026-05-12 22:19 | Review R003 | plan Step 2: APPROVE |
+| 2026-05-12 22:22 | Review R004 | code Step 2: APPROVE |
