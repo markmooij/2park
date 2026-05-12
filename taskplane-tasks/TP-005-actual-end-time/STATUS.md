@@ -1,6 +1,6 @@
 # TP-005: Return Actual End Time from Website — Status
 
-**Current Step:** Step 0: Preflight
+**Current Step:** Step 2: Update api.py to Propagate Actual End Time
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-05-12
 **Review Level:** 1
@@ -23,19 +23,19 @@
 ---
 
 ### Step 1: Update `create_booking()` to Return Actual End Time
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Modify `create_booking()` to use scraped end time from `Reservation`
-- [ ] Add discrepancy warning log (>5 min difference)
-- [ ] Ensure returned dict includes actual scraped end time
+- [x] Modify `create_booking()` to use scraped end time from `Reservation`
+- [x] Add discrepancy warning log (>5 min difference)
+- [x] Ensure returned dict includes actual scraped end time
 
 ---
 
 ### Step 2: Update `api.py` to Propagate Actual End Time
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Verify `create_booking` endpoint returns actual end time
-- [ ] Add discrepancy logging if needed
+- [x] Verify `create_booking` endpoint returns actual end time
+- [x] Add discrepancy logging if needed
 
 ---
 
