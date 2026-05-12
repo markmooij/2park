@@ -1,11 +1,11 @@
 # TP-006: Fix `extend_booking()` Selectors — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 1: Rewrite `extend_booking()` with Correct Selectors
+**Status:** 🟡 In Progress
+**Last Updated:** 2026-05-12
 **Review Level:** 2
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** M
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,23 +14,24 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read `scraper.py` `extend_booking()` to understand current flow
-- [ ] Read TP-003 `DOM_REFERENCE.md` for actual selectors
-- [ ] Verify DOM reference includes extend button selectors
+- [x] Read `scraper.py` `extend_booking()` to understand current flow
+- [x] Read TP-003 `DOM_REFERENCE.md` for actual selectors
+- [x] Verify DOM reference includes extend button selectors
 
 ---
 
 ### Step 1: Rewrite `extend_booking()` with Correct Selectors
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
-- [ ] Navigate to dashboard (not `/parkings`)
-- [ ] Click "Lopend" tab with correct selectors
-- [ ] Find booking card with real card selector
-- [ ] Click extend button with real selectors
-- [ ] Fill in additional minutes and submit
-- [ ] Read back actual new end time from website
+- [x] Navigate to dashboard (not `/parkings`)
+- [x] Click "Lopend" tab with correct selectors
+- [x] Find booking card with real card selector
+- [x] Click extend button with real selectors
+- [x] Fill in additional minutes and submit
+- [x] Read back actual new end time from website
+- [x] > Code review checkpoint
 
 ---
 
@@ -77,6 +78,8 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 22:02 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 22:02 | Step 0 started | Preflight |
 
 ---
 
