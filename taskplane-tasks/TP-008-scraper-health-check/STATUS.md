@@ -1,10 +1,10 @@
 # TP-008: `/health/scraper` Selector Check — Status
 
-**Current Step:** Step 1: Add `scraper_health_check()` to `TwoParkScraper`
+**Current Step:** Step 2: Add `/health/scraper` Endpoint to `api.py`
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-05-12
 **Review Level:** 2
-**Review Counter:** 1
+**Review Counter:** 2
 **Iteration:** 1
 **Size:** M
 
@@ -24,7 +24,7 @@
 ---
 
 ### Step 1: Add `scraper_health_check()` to `TwoParkScraper`
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Add `scraper_health_check()` method
 - [x] Verify tab navigation selectors
@@ -34,7 +34,7 @@
 ---
 
 ### Step 2: Add `/health/scraper` Endpoint to `api.py`
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
 - [ ] Create `GET /health/scraper` endpoint
 - [ ] Return HTTP 200 with status
@@ -102,3 +102,4 @@
 
 *Reserved for execution notes*
 | 2026-05-12 22:16 | Review R001 | plan Step 1: APPROVE |
+| 2026-05-12 22:18 | Review R002 | code Step 1: APPROVE |
