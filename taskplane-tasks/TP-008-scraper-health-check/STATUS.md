@@ -1,11 +1,11 @@
 # TP-008: `/health/scraper` Selector Check — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 1: Add `scraper_health_check()` to `TwoParkScraper`
+**Status:** 🟡 In Progress
+**Last Updated:** 2026-05-12
 **Review Level:** 2
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** M
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,17 +14,17 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read `api.py` existing `/health` endpoint
-- [ ] Read `scraper.py` to understand `_login()` and `_find_booking_card()`
-- [ ] Read `errors.py` to understand error handling
-- [ ] Verify TP-003, TP-006, TP-007 complete
+- [x] Read `api.py` existing `/health` endpoint
+- [x] Read `scraper.py` to understand `_login()` and `_find_booking_card()`
+- [x] Read `errors.py` to understand error handling
+- [x] Verify TP-003, TP-006, TP-007 complete
 
 ---
 
 ### Step 1: Add `scraper_health_check()` to `TwoParkScraper`
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
 - [ ] Add `scraper_health_check()` method
 - [ ] Verify tab navigation selectors
@@ -87,6 +87,8 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 22:14 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 22:14 | Step 0 started | Preflight |
 
 ---
 
