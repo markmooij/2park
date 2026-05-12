@@ -30,6 +30,7 @@ from models import (
     ExtendBookingRequest,
     ExtendBookingResponse,
     ListBookingsResponse,
+    normalize_license_plate,
 )
 from rate_limit import check_rate_limit, rate_limiter
 from scraper import TwoParkScraper
@@ -347,6 +348,22 @@ async def create_booking(
             end_time=end_time,
         )
 
+        # Log if actual end time differs from calculated end time
+        actual_end = result.get("end_time", end_time)
+        if actual_end != end_time:
+            try:
+                diff_min = abs((actual_end - end_time).total_seconds()) / 60
+                logger_with_id.info(
+                    f"End time adjusted by scraper: calculated={end_time.isoformat()}",
+                    f" actual={actual_end.isoformat()}",
+                    f" difference={diff_min:.1f} min",
+                )
+            except Exception:
+                logger_with_id.debug(
+                    f"End time differs: calculated={end_time}",
+                    f" actual={actual_end}",
+                )
+
         return BookingResponse(
             license_plate=result["license_plate"],
             start_time=result["start_time"],
@@ -383,6 +400,9 @@ async def extend_booking(
     - **license_plate**: License plate of the booking to extend
     - **additional_minutes**: Additional minutes to add (1-1440)
     """
+    # Normalize license plate (strip hyphens, uppercase)
+    license_plate = normalize_license_plate(license_plate)
+
     request_id = getattr(request_obj.state, "request_id", "unknown")
     logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
     logger_with_id.info(
@@ -428,6 +448,9 @@ async def cancel_booking(
 
     - **license_plate**: License plate of the booking to cancel
     """
+    # Normalize license plate (strip hyphens, uppercase)
+    license_plate = normalize_license_plate(license_plate)
+
     request_id = getattr(request_obj.state, "request_id", "unknown")
     logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
     logger_with_id.info(f"Cancelling booking for {license_plate}")

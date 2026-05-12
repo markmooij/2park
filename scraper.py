@@ -683,16 +683,31 @@ class TwoParkScraper:
             else:
                 raise ScrapeErrorException("Submit button not found")
 
-            # Verify booking was created
+            # Verify booking was created and read back actual times from website
             await asyncio.sleep(2)  # Wait for booking to appear
             reservations = await self.get_active_reservations()
             for res in reservations:
                 if res.license_plate.upper() == license_plate.upper():
                     logger.info(f"Booking created successfully for {license_plate}")
+
+                    # Parse the scraped end_time back to datetime for comparison
+                    scraped_end = date_parser.isoparse(res.end_time)
+                    if scraped_end.tzinfo is None:
+                        scraped_end = scraped_end.replace(tzinfo=timezone.utc)
+
+                    # Check discrepancy between scraped and calculated end time
+                    time_diff_minutes = abs((scraped_end - end_time).total_seconds()) / 60
+                    if time_diff_minutes > 5:
+                        logger.warning(
+                            f"End time discrepancy: calculated={end_time.isoformat()}, "
+                            f"scraped={scraped_end.isoformat()}, "
+                            f"difference={time_diff_minutes:.1f} minutes"
+                        )
+
                     return {
                         "license_plate": license_plate,
                         "start_time": start_time,
-                        "end_time": end_time,
+                        "end_time": scraped_end,
                         "status": "active",
                     }
 
@@ -720,108 +735,215 @@ class TwoParkScraper:
                 f"Extending booking for {license_plate} by {additional_minutes} minutes"
             )
 
-            # Find the existing booking
-            reservations = await self.get_active_reservations()
-            target_booking = None
-            for res in reservations:
-                if res.license_plate.upper() == license_plate.upper():
-                    target_booking = res
-                    break
-
-            if not target_booking:
-                raise BookingNotFoundException(
-                    f"No active booking found for {license_plate}"
-                )
-
-            # Navigate to extend booking page (this depends on actual website structure)
-            # This is a placeholder - you'll need to adjust based on actual 2park.nl UI
+            # Navigate to the dashboard (where bookings are visible)
             await self.page.goto(
-                "https://mijn.2park.nl/parkings",
+                "https://mijn.2park.nl/",
                 timeout=self._get_timeout_ms("navigation"),
             )
+            await self.page.wait_for_timeout(3000)
+            logger.info(f"Current URL: {self.page.url}")
 
-            # Find the booking in the list and click extend button
+            # Click the "Lopend" (active) tab to ensure we're on the right tab
+            lopend_tabs = await self.page.query_selector_all(".tabs-container button")
+            for tab in lopend_tabs:
+                tab_text = await tab.inner_text()
+                if "Lopend" in tab_text:
+                    await tab.click()
+                    await self.page.wait_for_timeout(2000)
+                    logger.info("Clicked 'Lopend' tab")
+                    break
+
+            # Find the booking card using real selectors from DOM audit
+            # .parkapp-item is confirmed to match booking cards
             booking_items = await self.page.query_selector_all(".parkapp-item")
+            logger.info(f"Found {len(booking_items)} booking item(s)")
+
+            target_item = None
             for item in booking_items:
-                license_element = await item.query_selector(".license-plate-text")
+                # Try .license-plate.active first (from DOM audit), fall back to .license-plate-text
+                license_element = await item.query_selector(
+                    ".license-plate.active, .license-plate-text"
+                )
                 if license_element:
-                    item_license = await license_element.inner_text()
-                    if item_license.upper() == license_plate.upper():
-                        # Look for extend button
-                        extend_button = await item.query_selector(
-                            ".extend-button, button.extend, .btn-extend"
-                        )
-                        if extend_button:
-                            await extend_button.click()
-                            await asyncio.sleep(1)
+                    try:
+                        item_license = await license_element.inner_text()
+                        item_license = item_license.upper().replace(" ", "")
+                        target_plate = license_plate.upper().replace("-", "").replace(" ", "")
+                        logger.info(f"Checking booking with license: {item_license}")
+                        if item_license == target_plate:
+                            target_item = item
+                            break
+                    except Exception:
+                        continue
 
-                            # Fill in additional time
-                            duration_input = await self.page.query_selector(
-                                "#additional_time, input[name='additional_time']"
-                            )
-                            if duration_input:
-                                await duration_input.fill(str(additional_minutes))
+            if not target_item:
+                # Take screenshot for debugging
+                try:
+                    await self.page.screenshot(path="/tmp/2park_extend_debug.png")
+                    logger.info("Screenshot saved to /tmp/2park_extend_debug.png")
+                except Exception:
+                    pass
 
-                            # Submit
-                            submit_button = await self.page.query_selector(
-                                'button[type="submit"], .submit-extend'
-                            )
-                            if submit_button:
-                                await submit_button.click()
-                                await self.page.wait_for_load_state(
-                                    "networkidle",
-                                    timeout=self._get_timeout_ms("navigation"),
-                                )
+                # Log all visible license plates for debugging
+                all_licenses = await self.page.query_selector_all(
+                    ".license-plate.active, .license-plate-text"
+                )
+                logger.info(f"Total license elements found: {len(all_licenses)}")
+                for i, lic_elem in enumerate(all_licenses[:5]):
+                    try:
+                        lic_text = await lic_elem.inner_text()
+                        logger.info(f"  License {i}: {lic_text}")
+                    except Exception:
+                        pass
 
-                            # Calculate new end time from the actual booking
-                            # Parse the end_time string from the reservation
-                            try:
-                                # Parse the end time from the reservation (format: "HH:MM" or full datetime)
-                                end_time_str = target_booking.end_time
-                                # Try to parse as ISO format first, then fall back to time-only format
-                                if "T" in end_time_str or "-" in end_time_str:
-                                    original_end = date_parser.isoparse(end_time_str)
-                                    if original_end.tzinfo is not None:
-                                        original_end = original_end.replace(tzinfo=None)
-                                else:
-                                    # Time-only format like "17:00" - assume today's date
-                                    today = datetime.now()
-                                    time_obj = date_parser.parse(end_time_str)
-                                    original_end = datetime(
-                                        today.year, today.month, today.day,
-                                        time_obj.hour, time_obj.minute
-                                    )
-                                new_end_time = original_end + timedelta(
-                                    minutes=additional_minutes
-                                )
-                            except Exception:
-                                # Fallback: use current time + additional minutes
-                                logger.warning(
-                                    f"Could not parse end time '{target_booking.end_time}', "
-                                    f"using current time as base"
-                                )
-                                new_end_time = datetime.now() + timedelta(
-                                    minutes=additional_minutes
-                                )
+                raise BookingNotFoundException(
+                    f"Could not find booking UI for {license_plate}"
+                )
 
-                            return {
-                                "license_plate": license_plate,
-                                "new_end_time": new_end_time,
-                            }
-                        else:
-                            raise ScrapeErrorException(
-                                "Extend button not found for booking"
-                            )
+            # Click the extend button using real selector from DOM audit
+            extend_button = await target_item.query_selector(".extend-context-menu-button")
+            if not extend_button:
+                # Log available buttons for debugging
+                buttons = await target_item.query_selector_all("button")
+                logger.info(f"Available buttons in booking card: {len(buttons)}")
+                for i, btn in enumerate(buttons):
+                    try:
+                        btn_text = await btn.inner_text()
+                        btn_classes = await btn.get_attribute("class")
+                        logger.info(f"  Button {i}: text='{btn_text}', class='{btn_classes}'")
+                    except Exception:
+                        pass
 
-            raise BookingNotFoundException(
-                f"Could not find booking UI for {license_plate}"
+                # Take screenshot for debugging
+                try:
+                    await self.page.screenshot(path="/tmp/2park_extend_no_button.png")
+                    logger.info("Screenshot saved to /tmp/2park_extend_no_button.png")
+                except Exception:
+                    pass
+
+                raise ScrapeErrorException("Extend button not found for booking")
+
+            logger.info("Clicking extend button")
+            await extend_button.click()
+            await self.page.wait_for_timeout(2000)
+
+            # Fill in additional minutes in the extend form
+            # The form opens after clicking extend — try multiple input selectors
+            duration_selectors = [
+                "input[type='number']",
+                "input[type='text']",
+                "input[name*='time']",
+                "input[name*='duration']",
+                "input[name*='minute']",
+                "input[name*='additional']",
+                "#additional_time",
+                "input",
+            ]
+
+            duration_input = None
+            for selector in duration_selectors:
+                duration_input = await self.page.query_selector(selector)
+                if duration_input:
+                    logger.info(f"Found duration input with selector: {selector}")
+                    break
+
+            if not duration_input:
+                raise ScrapeErrorException("Duration input field not found on extend form")
+
+            logger.info(f"Filling duration: {additional_minutes}")
+            await duration_input.fill(str(additional_minutes))
+            await self.page.wait_for_timeout(1000)
+
+            # Submit the extension — look for submit/confirm button
+            submit_selectors = [
+                'button[type="submit"]',
+                'button:has-text("Verleng")',
+                'button:has-text("Bevestigen")',
+                'button:has-text("Opslaan")',
+                'button:has-text("Confirm")',
+                'button.primary',
+                'button[type="button"]',
+            ]
+
+            submit_button = None
+            for selector in submit_selectors:
+                submit_button = await self.page.query_selector(selector)
+                if submit_button:
+                    logger.info(f"Found submit button with selector: {selector}")
+                    break
+
+            if not submit_button:
+                raise ScrapeErrorException("Submit button not found on extend form")
+
+            logger.info("Submitting extension")
+            await submit_button.click()
+            await self.page.wait_for_load_state(
+                "networkidle",
+                timeout=self._get_timeout_ms("navigation"),
             )
+            await self.page.wait_for_timeout(2000)
+
+            # Read back the new end time from the refreshed page
+            # Re-query the booking card to get updated times
+            updated_items = await self.page.query_selector_all(".parkapp-item")
+            new_end_time = None
+
+            for item in updated_items:
+                license_element = await item.query_selector(
+                    ".license-plate.active, .license-plate-text"
+                )
+                if license_element:
+                    try:
+                        item_license = await license_element.inner_text()
+                        item_license = item_license.upper().replace(" ", "")
+                        target_plate = license_plate.upper().replace("-", "").replace(" ", "")
+                        if item_license == target_plate:
+                            # Get the end time from the time containers
+                            time_elements = await item.query_selector_all(
+                                ".time-container > .time > div"
+                            )
+                            if len(time_elements) >= 2:
+                                end_time_elem = time_elements[1]
+                                end_time_text = await end_time_elem.inner_text()
+                                end_time_text = end_time_text.replace("\xa0", " ").strip()
+                                logger.info(f"Read back end time from page: {end_time_text}")
+
+                                # Parse the Dutch time format
+                                from datetime import timezone as tz
+                                new_end_time = parse_dutch_time(
+                                    end_time_text, base_date=datetime.now(tz.utc)
+                                )
+                                break
+                    except Exception as e:
+                        logger.warning(f"Error reading updated booking: {e}")
+                        continue
+
+            if not new_end_time:
+                logger.warning(
+                    f"Could not read back new end time from page, "
+                    f"using calculated fallback"
+                )
+                # Fallback: calculate from current time
+                new_end_time = datetime.now(timezone.utc) + timedelta(
+                    minutes=additional_minutes
+                )
+
+            return {
+                "license_plate": license_plate,
+                "new_end_time": new_end_time,
+            }
 
         except (BookingNotFoundException, ScrapeErrorException):
             raise
         except PlaywrightTimeoutError:
             raise TimeoutException("Timeout while extending booking")
         except Exception as e:
+            # Take screenshot for debugging
+            try:
+                await self.page.screenshot(path="/tmp/2park_extend_error.png")
+                logger.info("Screenshot saved to /tmp/2park_extend_error.png")
+            except Exception:
+                pass
             logger.error(f"Error extending booking: {e}")
             raise ScrapeErrorException(f"Failed to extend booking: {str(e)}")
 

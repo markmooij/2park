@@ -1,11 +1,11 @@
 # TP-004: License Plate Normalization at API Boundary — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 4: Documentation & Delivery
+**Status:** ✅ Complete
+**Last Updated:** 2026-05-12
 **Review Level:** 1
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** S
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,46 +14,46 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read `models.py` to understand current validation
-- [ ] Read `api.py` to identify all endpoints
-- [ ] Verify TP-003 DOM reference available
+- [x] Read `models.py` to understand current validation
+- [x] Read `api.py` to identify all endpoints
+- [x] Verify TP-003 DOM reference available
 
 ---
 
 ### Step 1: Add `normalize_license_plate()` to `models.py`
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Create `normalize_license_plate()` utility
-- [ ] Add unit tests for normalization
-- [ ] Update `validate_license_plate()` to normalize before validation
+- [x] Create `normalize_license_plate()` utility
+- [x] Add unit tests for normalization
+- [x] Update `validate_license_plate()` to normalize before validation
 
 ---
 
 ### Step 2: Apply Normalization at API Boundary
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Normalize plate in `create_booking()`
-- [ ] Normalize plate in `extend_booking()`
-- [ ] Normalize plate in `cancel_booking()`
-- [ ] Update `README.md`
+- [x] Normalize plate in `create_booking()` (already handled via Pydantic validator)
+- [x] Normalize plate in `extend_booking()`
+- [x] Normalize plate in `cancel_booking()`
+- [x] Update `README.md`
 
 ---
 
 ### Step 3: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] FULL test suite passing (`pytest`)
-- [ ] All failures fixed
+- [x] FULL test suite passing (`pytest`) — 17/17 passed
+- [x] All failures fixed (none)
 
 ---
 
 ### Step 4: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] `README.md` updated
-- [ ] Discoveries logged
+- [x] `README.md` updated with normalization note
+- [x] Discoveries logged
 
 ---
 
@@ -68,6 +68,9 @@
 
 | Discovery | Disposition | Location |
 |-----------|-------------|----------|
+| `validate_license_plate()` returned original string (with hyphens) — now returns normalized form | Fixed in Step 1 | `models.py` |
+| `extend_booking()` and `cancel_booking()` accepted unvalidated path params | Fixed in Step 2 | `api.py` |
+| Existing test assertions expected hyphenated plates — all updated for normalized format | Fixed in Step 1 | `tests/test_license_plate.py` |
 
 ---
 
@@ -76,6 +79,10 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 21:56 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 21:56 | Step 0 started | Preflight |
+| 2026-05-12 21:59 | Worker iter 1 | done in 202s, tools: 42 |
+| 2026-05-12 21:59 | Task complete | .DONE created |
 
 ---
 
