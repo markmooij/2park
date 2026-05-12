@@ -1,11 +1,11 @@
 # TP-007: Shared `_find_booking_card()` Helper — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 0: Preflight
+**Status:** 🟡 In Progress
+**Last Updated:** 2026-05-12
 **Review Level:** 1
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** S
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,21 +14,21 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read `scraper.py` to understand duplicated card-finding logic
-- [ ] Identify shared logic between `extend_booking()` and `cancel_booking()`
-- [ ] Verify TP-003 and TP-006 complete
+- [x] Read `scraper.py` to understand duplicated card-finding logic
+- [x] Identify shared logic between `extend_booking()` and `cancel_booking()`
+- [x] Verify TP-003 and TP-006 complete
 
 ---
 
 ### Step 1: Create `_find_booking_card()` Helper
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Add `_find_booking_card()` method with correct selectors
-- [ ] Return dict with card element, license plate, start/end times
-- [ ] Handle license plate normalization
-- [ ] Log debugging info
+- [x] Add `_find_booking_card()` method with correct selectors
+- [x] Return dict with card element, license plate, start/end times
+- [x] Handle license plate normalization
+- [x] Log debugging info
 
 ---
 
@@ -75,6 +75,8 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 22:10 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 22:10 | Step 0 started | Preflight |
 
 ---
 

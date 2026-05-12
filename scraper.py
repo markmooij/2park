@@ -69,7 +69,7 @@ from errors import (
     ScrapeErrorException,
     TimeoutException,
 )
-from models import Reservation
+from models import Reservation, normalize_license_plate
 
 logger = logging.getLogger(__name__)
 
@@ -727,6 +727,100 @@ class TwoParkScraper:
         except Exception as e:
             logger.error(f"Error creating booking: {e}")
             raise ScrapeErrorException(f"Failed to create booking: {str(e)}")
+
+    async def _find_booking_card(
+        self, license_plate: str
+    ) -> Optional[Dict]:
+        """
+        Find a booking card on the dashboard matching the given license plate.
+
+        Navigates to the dashboard, clicks the 'Lopend' tab, and iterates
+        over booking cards to find one matching the normalized license plate.
+
+        Returns a dict with:
+            - card_element: the Playwright element handle for the booking card
+            - license_plate: the license plate text as found on the page
+            - start_time: the booking start time (ISO format)
+            - end_time: the booking end time (ISO format)
+
+        Returns None if no matching card is found.
+        """
+        logger.info(f"Finding booking card for {license_plate}")
+
+        # Navigate to the dashboard
+        await self.page.goto(
+            "https://mijn.2park.nl/",
+            timeout=self._get_timeout_ms("navigation"),
+        )
+        await self.page.wait_for_timeout(3000)
+        logger.info(f"Current URL: {self.page.url}")
+
+        # Click the "Lopend" (active) tab to ensure we're on the right tab
+        lopend_tabs = await self.page.query_selector_all(".tabs-container button")
+        for tab in lopend_tabs:
+            tab_text = await tab.inner_text()
+            if "Lopend" in tab_text:
+                await tab.click()
+                await self.page.wait_for_timeout(2000)
+                logger.info("Clicked 'Lopend' tab")
+                break
+
+        # Find booking cards using the confirmed selector from DOM audit
+        booking_items = await self.page.query_selector_all(".parkapp-item")
+        logger.info(f"Found {len(booking_items)} booking item(s)")
+
+        target_plate = normalize_license_plate(license_plate)
+
+        for item in booking_items:
+            # Try .license-plate.active first (from DOM audit), fall back to .license-plate-text
+            license_element = await item.query_selector(
+                ".license-plate.active, .license-plate-text"
+            )
+            if not license_element:
+                continue
+
+            try:
+                item_license_raw = await license_element.inner_text()
+                item_license = normalize_license_plate(item_license_raw)
+                logger.info(f"Checking booking with license: {item_license_raw}")
+
+                if item_license == target_plate:
+                    # Extract start and end times
+                    time_elements = await item.query_selector_all(
+                        ".time-container > .time > div"
+                    )
+                    start_time = ""
+                    end_time = ""
+                    if len(time_elements) >= 2:
+                        start_time_raw = await time_elements[0].inner_text()
+                        end_time_raw = await time_elements[1].inner_text()
+                        start_time = parse_dutch_time(start_time_raw)
+                        end_time = parse_dutch_time(end_time_raw)
+
+                    # Log available buttons on the card for debugging
+                    buttons = await item.query_selector_all("button")
+                    logger.info(f"Available buttons in booking card: {len(buttons)}")
+                    for i, btn in enumerate(buttons):
+                        try:
+                            btn_text = await btn.inner_text()
+                            btn_classes = await btn.get_attribute("class")
+                            logger.info(
+                                f"  Button {i}: text='{btn_text}', class='{btn_classes}'"
+                            )
+                        except Exception:
+                            pass
+
+                    return {
+                        "card_element": item,
+                        "license_plate": item_license_raw,
+                        "start_time": start_time,
+                        "end_time": end_time,
+                    }
+            except Exception:
+                continue
+
+        logger.warning(f"No booking card found for {license_plate}")
+        return None
 
     async def extend_booking(self, license_plate: str, additional_minutes: int) -> Dict:
         """Extend an existing booking"""
