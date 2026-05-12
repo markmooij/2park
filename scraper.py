@@ -683,16 +683,31 @@ class TwoParkScraper:
             else:
                 raise ScrapeErrorException("Submit button not found")
 
-            # Verify booking was created
+            # Verify booking was created and read back actual times from website
             await asyncio.sleep(2)  # Wait for booking to appear
             reservations = await self.get_active_reservations()
             for res in reservations:
                 if res.license_plate.upper() == license_plate.upper():
                     logger.info(f"Booking created successfully for {license_plate}")
+
+                    # Parse the scraped end_time back to datetime for comparison
+                    scraped_end = date_parser.isoparse(res.end_time)
+                    if scraped_end.tzinfo is None:
+                        scraped_end = scraped_end.replace(tzinfo=timezone.utc)
+
+                    # Check discrepancy between scraped and calculated end time
+                    time_diff_minutes = abs((scraped_end - end_time).total_seconds()) / 60
+                    if time_diff_minutes > 5:
+                        logger.warning(
+                            f"End time discrepancy: calculated={end_time.isoformat()}, "
+                            f"scraped={scraped_end.isoformat()}, "
+                            f"difference={time_diff_minutes:.1f} minutes"
+                        )
+
                     return {
                         "license_plate": license_plate,
                         "start_time": start_time,
-                        "end_time": end_time,
+                        "end_time": scraped_end,
                         "status": "active",
                     }
 
