@@ -1,10 +1,10 @@
 # TP-008: `/health/scraper` Selector Check — Status
 
-**Current Step:** Step 2: Add `/health/scraper` Endpoint to `api.py`
+**Current Step:** Step 4: Testing & Verification
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-05-12
 **Review Level:** 2
-**Review Counter:** 4
+**Review Counter:** 5
 **Iteration:** 1
 **Size:** M
 
@@ -45,7 +45,7 @@
 ---
 
 ### Step 3: Add `SELECTOR_MISMATCH` Error Code
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Add error code to `ErrorCode` enum
 - [x] Create `SelectorMismatchException` class
@@ -53,7 +53,7 @@
 ---
 
 ### Step 4: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
 - [ ] FULL test suite passing (`pytest`)
 - [ ] All failures fixed
@@ -105,3 +105,4 @@
 | 2026-05-12 22:18 | Review R002 | code Step 1: APPROVE |
 | 2026-05-12 22:19 | Review R003 | plan Step 2: APPROVE |
 | 2026-05-12 22:22 | Review R004 | code Step 2: APPROVE |
+| 2026-05-12 22:24 | Review R005 | code Step 3: APPROVE |
