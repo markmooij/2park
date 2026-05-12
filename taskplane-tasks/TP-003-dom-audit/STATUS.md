@@ -14,7 +14,7 @@
 ---
 
 ### Step 0: Preflight
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Verify credentials are available (TWOPARK_EMAIL and TWOPARK_PASSWORD from `.env`)
 - [x] Verify Playwright is installed
@@ -22,12 +22,12 @@
 ---
 
 ### Step 1: Run DOM Audit Script
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Write and execute standalone Playwright script
-- [ ] Dump dashboard DOM structure
-- [ ] Capture screenshot to `/tmp/dashboard_dom_audit.png`
-- [ ] Write findings to `DOM_REFERENCE.md`
+- [x] Write and execute standalone Playwright script
+- [x] Dump dashboard DOM structure
+- [x] Capture screenshot to `/tmp/dashboard_dom_audit.png`
+- [x] Write findings to `DOM_REFERENCE.md`
 
 ---
 
