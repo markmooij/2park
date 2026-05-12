@@ -21,7 +21,14 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from auth import get_credentials, verify_token
-from errors import APIException, ErrorResponse
+from errors import (
+    APIException,
+    BrowserException,
+    ErrorResponse,
+    LoginFailedException,
+    ScrapeErrorException,
+    TimeoutException,
+)
 from models import (
     BalanceResponse,
     BookingResponse,
@@ -162,6 +169,7 @@ async def root():
             "create_booking": "POST /api/bookings",
             "extend_booking": "POST /api/bookings/{license_plate}/extend",
             "cancel_booking": "POST /api/bookings/{license_plate}/cancel",
+            "scraper_health": "GET /health/scraper",
         },
         "authentication": "Bearer token required in Authorization header",
         "rate_limit": {
@@ -182,6 +190,65 @@ async def health_check():
             "window_seconds": rate_limiter.get_config()[1],
         },
     }
+
+
+@app.get("/health/scraper")
+async def scraper_health_check():
+    """
+    Scraper selector health check endpoint.
+
+    Verifies that the critical DOM selectors used by the scraper
+    are still present on the 2Park dashboard. Returns "ok" if all
+    selectors are found, "degraded" if some are missing.
+
+    Does not require authentication — designed for monitoring systems.
+    """
+    import time
+    start = time.monotonic()
+
+    logger.info("Scraper health check requested")
+
+    email, password = get_credentials()
+
+    try:
+        async with TwoParkScraper(email, password) as scraper:
+            result = await scraper.scraper_health_check()
+
+        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+        result["total_response_time_ms"] = elapsed_ms
+
+        logger.info(f"Scraper health check completed: {result['status']}")
+        return result
+
+    except TimeoutException:
+        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+        return {
+            "status": "error",
+            "error": "Timeout",
+            "message": "Health check timed out — 2Park website may be slow or unreachable",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "total_response_time_ms": elapsed_ms,
+        }
+    except (ScrapeErrorException, BrowserException, LoginFailedException) as e:
+        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+        logger.error(f"Scraper health check failed: {e}")
+        return {
+            "status": "error",
+            "error": type(e).__name__,
+            "message": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "total_response_time_ms": elapsed_ms,
+        }
+    except Exception as e:
+        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+        logger.error(f"Scraper health check unexpected error: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "error": "UnexpectedError",
+            "message": "An unexpected error occurred during health check",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "total_response_time_ms": elapsed_ms,
+        }
 
 
 @app.get(
