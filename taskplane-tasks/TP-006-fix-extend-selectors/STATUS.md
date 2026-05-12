@@ -1,7 +1,7 @@
 # TP-006: Fix `extend_booking()` Selectors — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** 🟡 In Progress
+**Current Step:** Step 4: Documentation & Delivery
+**Status:** ✅ Complete
 **Last Updated:** 2026-05-12
 **Review Level:** 2
 **Review Counter:** 2
@@ -53,9 +53,9 @@
 ---
 
 ### Step 4: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Discoveries logged
+- [x] Discoveries logged
 
 ---
 
@@ -72,6 +72,12 @@
 
 | Discovery | Disposition | Location |
 |-----------|-------------|----------|
+| `.parkapp-item` selector confirmed working for booking cards | Used in implementation | `scraper.py` |
+| `.extend-context-menu-button` is the correct extend button class | Used in implementation | `scraper.py` |
+| `.license-plate.active` is the correct license plate selector (not `.license-plate-text`) | Used with fallback | `scraper.py` |
+| Dashboard URL is `https://mijn.2park.nl/` (not `/parkings`) | Fixed navigation | `scraper.py` |
+| Extend form fields not visible in DOM audit — used generic input selectors | Fallback approach | `scraper.py` |
+| Tab navigation uses `.tabs-container button` elements with text content | Used for "Lopend" tab | `scraper.py` |
 
 ---
 
