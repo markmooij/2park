@@ -30,6 +30,7 @@ from models import (
     ExtendBookingRequest,
     ExtendBookingResponse,
     ListBookingsResponse,
+    normalize_license_plate,
 )
 from rate_limit import check_rate_limit, rate_limiter
 from scraper import TwoParkScraper
@@ -383,6 +384,9 @@ async def extend_booking(
     - **license_plate**: License plate of the booking to extend
     - **additional_minutes**: Additional minutes to add (1-1440)
     """
+    # Normalize license plate (strip hyphens, uppercase)
+    license_plate = normalize_license_plate(license_plate)
+
     request_id = getattr(request_obj.state, "request_id", "unknown")
     logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
     logger_with_id.info(
@@ -428,6 +432,9 @@ async def cancel_booking(
 
     - **license_plate**: License plate of the booking to cancel
     """
+    # Normalize license plate (strip hyphens, uppercase)
+    license_plate = normalize_license_plate(license_plate)
+
     request_id = getattr(request_obj.state, "request_id", "unknown")
     logger_with_id = logging.LoggerAdapter(logger, {"request_id": request_id})
     logger_with_id.info(f"Cancelling booking for {license_plate}")

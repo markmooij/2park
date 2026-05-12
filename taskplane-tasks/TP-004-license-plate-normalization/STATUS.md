@@ -32,12 +32,12 @@
 ---
 
 ### Step 2: Apply Normalization at API Boundary
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
-- [ ] Normalize plate in `create_booking()`
-- [ ] Normalize plate in `extend_booking()`
-- [ ] Normalize plate in `cancel_booking()`
-- [ ] Update `README.md`
+- [x] Normalize plate in `create_booking()` (already handled via Pydantic validator)
+- [x] Normalize plate in `extend_booking()`
+- [x] Normalize plate in `cancel_booking()`
+- [x] Update `README.md`
 
 ---
 

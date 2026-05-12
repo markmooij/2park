@@ -42,6 +42,19 @@ All endpoints except `/health` require a Bearer token in the `Authorization` hea
 | `/api/bookings/{license_plate}/extend` | POST | Extend an existing booking |
 | `/api/bookings/{license_plate}/cancel` | POST | Cancel a booking |
 
+## License Plate Normalization
+
+All license plates are **normalized at the API boundary**: hyphens and spaces are stripped, and letters are uppercased. This matches the format used by 2park.nl.
+
+| Input | Normalized |
+|-------|------------|
+| `51-PXPN` | `51PXPN` |
+| `AB-12-CD` | `AB12CD` |
+| `ab-12-x` | `AB12X` |
+| `51PXPN` | `51PXPN` (already normalized) |
+
+Normalization is idempotent — sending a normalized plate back as input produces the same result.
+
 ## curl Examples
 
 All examples use port `8090` (default for both Docker and local). Replace `YOUR_API_TOKEN` with your actual token.
@@ -97,7 +110,7 @@ curl -X POST http://localhost:8090/api/bookings \
 
 ```json
 {
-  "license_plate": "51-PXPN",
+  "license_plate": "51PXPN",
   "start_time": "2026-03-31T13:27:13Z",
   "end_time": "2026-03-31T15:27:13Z",
   "status": "active"
@@ -119,7 +132,7 @@ curl -X POST http://localhost:8090/api/bookings/51-PXPN/extend \
 
 ```json
 {
-  "license_plate": "51-PXPN",
+  "license_plate": "51PXPN",
   "new_end_time": "2026-03-31T16:27:13Z"
 }
 ```
@@ -452,7 +465,7 @@ pytest tests/ -v
 
 | Test File | Tests |
 |-----------|-------|
-| `test_license_plate.py` | 4 |
+| `test_license_plate.py` | 14 |
 | `test_time_parsing.py` | 3 |
 
 Integration tests against a running server:
