@@ -1,7 +1,7 @@
 # TP-003: DOM Audit (Playwright Dump) — Status
 
-**Current Step:** Step 0: Preflight
-**Status:** 🟡 In Progress
+**Current Step:** Step 3: Delivery
+**Status:** ✅ Complete
 **Last Updated:** 2026-05-12
 **Review Level:** 0
 **Review Counter:** 0
@@ -42,7 +42,7 @@
 ---
 
 ### Step 3: Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 ---
 
@@ -57,6 +57,10 @@
 
 | Discovery | Disposition | Location |
 |-----------|-------------|----------|
+| `tag_name` not available on ElementHandle in this Playwright version | Used `evaluate("el => el.tagName")` instead | dom_audit.py |
+| `.parkapp-item` still exists and works for booking cards | Confirmed — 1 active booking found | DOM_REFERENCE.md |
+| Extend button class: `.extend-context-menu-button` | Documented in DOM_REFERENCE.md | DOM_REFERENCE.md |
+| Stop/cancel button class: `.stop-context-menu-button` | Documented in DOM_REFERENCE.md | DOM_REFERENCE.md |
 
 ---
 
@@ -67,6 +71,11 @@
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
 | 2026-05-12 21:50 | Task started | Runtime V2 lane-runner execution |
 | 2026-05-12 21:50 | Step 0 started | Preflight |
+| 2026-05-12 23:53 | Step 0 complete | Credentials verified, Playwright installed |
+| 2026-05-12 23:53 | Step 1 complete | DOM audit script executed successfully |
+| 2026-05-12 23:54 | Step 2 complete | DOM reference verified |
+| 2026-05-12 23:54 | Step 3 complete | All completion criteria met |
+| 2026-05-12 23:54 | Task complete | DOM_REFERENCE.md + screenshot delivered |
 
 ---
 
