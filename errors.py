@@ -3,7 +3,7 @@ Error codes and standardized error handling for 2Park API
 """
 
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -31,6 +31,7 @@ class ErrorCode(str, Enum):
     SCRAPE_ERROR = "SCRAPE_ERROR"
     TIMEOUT_ERROR = "TIMEOUT_ERROR"
     ELEMENT_NOT_FOUND = "ELEMENT_NOT_FOUND"
+    SELECTOR_MISMATCH = "SELECTOR_MISMATCH"
 
     # General errors
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -138,4 +139,21 @@ class RateLimitExceededException(APIException):
     def __init__(self, message: str = "Rate limit exceeded. Please try again later."):
         super().__init__(
             code=ErrorCode.RATE_LIMIT_EXCEEDED, message=message, status_code=429
+        )
+
+
+class SelectorMismatchException(APIException):
+    """Selector mismatch exception — DOM structure has changed"""
+
+    def __init__(
+        self,
+        message: str = "Expected DOM selectors not found — website structure may have changed",
+        missing_selectors: Optional[List[str]] = None,
+    ):
+        self.missing_selectors = missing_selectors or []
+        super().__init__(
+            code=ErrorCode.SELECTOR_MISMATCH,
+            message=message,
+            status_code=500,
+            details={"missing_selectors": self.missing_selectors},
         )

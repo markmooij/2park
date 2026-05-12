@@ -1,11 +1,11 @@
 # TP-008: `/health/scraper` Selector Check — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 5: Documentation & Delivery
+**Status:** ✅ Complete
+**Last Updated:** 2026-05-12
 **Review Level:** 2
-**Review Counter:** 0
-**Iteration:** 0
+**Review Counter:** 5
+**Iteration:** 1
 **Size:** M
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,57 +14,58 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read `api.py` existing `/health` endpoint
-- [ ] Read `scraper.py` to understand `_login()` and `_find_booking_card()`
-- [ ] Read `errors.py` to understand error handling
-- [ ] Verify TP-003, TP-006, TP-007 complete
+- [x] Read `api.py` existing `/health` endpoint
+- [x] Read `scraper.py` to understand `_login()` and `_find_booking_card()`
+- [x] Read `errors.py` to understand error handling
+- [x] Verify TP-003, TP-006, TP-007 complete
 
 ---
 
 ### Step 1: Add `scraper_health_check()` to `TwoParkScraper`
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Add `scraper_health_check()` method
-- [ ] Verify tab navigation selectors
-- [ ] Verify booking card selector exists
-- [ ] Return status dict with results
+- [x] Add `scraper_health_check()` method
+- [x] Verify tab navigation selectors
+- [x] Verify booking card selector exists
+- [x] Return status dict with results
 
 ---
 
 ### Step 2: Add `/health/scraper` Endpoint to `api.py`
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Create `GET /health/scraper` endpoint
-- [ ] Return HTTP 200 with status
-- [ ] Include response time
-- [ ] Add to API root documentation
-- [ ] Add error handling and timeouts
+- [x] Create `GET /health/scraper` endpoint
+- [x] Return HTTP 200 with status
+- [x] Include response time
+- [x] Add to API root documentation
+- [x] Add error handling and timeouts
 
 ---
 
 ### Step 3: Add `SELECTOR_MISMATCH` Error Code
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Add error code to `ErrorCode` enum (if needed)
-- [ ] Create exception class (if needed)
+- [x] Add error code to `ErrorCode` enum
+- [x] Create `SelectorMismatchException` class
 
 ---
 
 ### Step 4: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] FULL test suite passing (`pytest`)
-- [ ] All failures fixed
+- [x] FULL test suite passing (`pytest`) — 24 passed, 0 failures
+- [x] All failures fixed
 
 ---
 
 ### Step 5: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] `README.md` updated
-- [ ] Discoveries logged
+- [x] `README.md` updated with `/health/scraper` endpoint
+- [x] `API.md` updated with Scraper Health Check section
+- [x] Discoveries logged
 
 ---
 
@@ -87,6 +88,10 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 22:14 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 22:14 | Step 0 started | Preflight |
+| 2026-05-12 22:28 | Worker iter 1 | done in 848s, tools: 94 |
+| 2026-05-12 22:28 | Task complete | .DONE created |
 
 ---
 
@@ -99,3 +104,8 @@
 ## Notes
 
 *Reserved for execution notes*
+| 2026-05-12 22:16 | Review R001 | plan Step 1: APPROVE |
+| 2026-05-12 22:18 | Review R002 | code Step 1: APPROVE |
+| 2026-05-12 22:19 | Review R003 | plan Step 2: APPROVE |
+| 2026-05-12 22:22 | Review R004 | code Step 2: APPROVE |
+| 2026-05-12 22:24 | Review R005 | code Step 3: APPROVE |

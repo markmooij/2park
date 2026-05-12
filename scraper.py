@@ -1085,3 +1085,87 @@ class TwoParkScraper:
         except Exception as e:
             logger.error(f"Error cancelling booking: {e}")
             raise ScrapeErrorException(f"Failed to cancel booking: {str(e)}")
+
+    async def scraper_health_check(self) -> Dict:
+        """
+        Verify that critical scraper selectors are present on the 2Park dashboard.
+
+        Navigates to the dashboard and checks for the presence of selectors
+        used by booking operations (tabs, card containers, action buttons).
+
+        Returns a dict with:
+            - status: "ok" if all selectors present, "degraded" if some missing
+            - selectors_checked: list of {selector, present} dicts
+            - timestamp: ISO timestamp of the check
+            - response_time_ms: time taken to run the check
+        """
+        import time
+        start = time.monotonic()
+
+        logger.info("Starting scraper health check")
+
+        # Define the critical selectors to verify
+        selectors_to_check = [
+            {"selector": ".tabs-container", "label": "Tab container"},
+            {"selector": ".tabText", "label": "Tab text element"},
+            {"selector": ".parkapp-item", "label": "Booking card item"},
+            {"selector": ".license-plate.active", "label": "License plate display"},
+            {"selector": ".extend-context-menu-button", "label": "Extend button"},
+            {"selector": ".stop-context-menu-button", "label": "Stop/Cancel button"},
+            {"selector": ".time-container", "label": "Time display container"},
+            {"selector": ".parking-action-balance", "label": "Balance display"},
+        ]
+
+        results = []
+        missing = []
+
+        try:
+            # Navigate to dashboard (already logged in via initialize)
+            await self.page.goto(
+                "https://mijn.2park.nl/",
+                timeout=self._get_timeout_ms("navigation"),
+            )
+            await self.page.wait_for_timeout(3000)
+            logger.info(f"Dashboard loaded: {self.page.url}")
+
+            # Check each selector
+            for spec in selectors_to_check:
+                sel = spec["selector"]
+                label = spec["label"]
+                try:
+                    element = await self.page.query_selector(sel)
+                    present = element is not None
+                    results.append({"selector": sel, "label": label, "present": present})
+                    if present:
+                        logger.info(f"Health check: {label} ({sel}) ✓ present")
+                    else:
+                        logger.warning(f"Health check: {label} ({sel}) ✗ missing")
+                        missing.append(sel)
+                except Exception as e:
+                    logger.warning(f"Health check: {label} ({sel}) ✗ error: {e}")
+                    results.append({"selector": sel, "label": label, "present": False, "error": str(e)})
+                    missing.append(sel)
+
+        except PlaywrightTimeoutError:
+            logger.error("Health check: navigation timeout")
+            raise TimeoutException("Health check timed out navigating to dashboard")
+        except Exception as e:
+            logger.error(f"Health check: unexpected error: {e}")
+            raise ScrapeErrorException(f"Health check failed: {str(e)}")
+
+        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+        status = "ok" if not missing else "degraded"
+
+        logger.info(
+            f"Health check complete: status={status}, "
+            f"missing={len(missing)}/{len(selectors_to_check)}, "
+            f"elapsed={elapsed_ms}ms"
+        )
+
+        return {
+            "status": status,
+            "selectors_checked": results,
+            "missing_selectors": missing,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "response_time_ms": elapsed_ms,
+        }

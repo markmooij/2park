@@ -16,6 +16,7 @@ docker compose up -d
 
 # Test
 curl http://localhost:8090/health
+curl http://localhost:8090/health/scraper
 curl -H "Authorization: Bearer YOUR_API_TOKEN" http://localhost:8090/api/account/balance
 ```
 
@@ -31,11 +32,12 @@ python api.py
 
 ## API Endpoints
 
-All endpoints except `/health` require a Bearer token in the `Authorization` header.
+All endpoints except `/health` and `/health/scraper` require a Bearer token in the `Authorization` header.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Health check (no auth) |
+| `/health/scraper` | GET | Scraper selector health check (no auth) |
 | `/api/account/balance` | GET | Get current account balance |
 | `/api/bookings` | GET | List all active bookings |
 | `/api/bookings` | POST | Create a new booking |
@@ -58,6 +60,33 @@ Normalization is idempotent — sending a normalized plate back as input produce
 ## curl Examples
 
 All examples use port `8090` (default for both Docker and local). Replace `YOUR_API_TOKEN` with your actual token.
+
+### Scraper Health Check
+
+```bash
+curl http://localhost:8090/health/scraper
+```
+
+```json
+{
+  "status": "ok",
+  "selectors_checked": [
+    {"selector": ".tabs-container", "label": "Tab container", "present": true},
+    {"selector": ".tabText", "label": "Tab text element", "present": true},
+    {"selector": ".parkapp-item", "label": "Booking card item", "present": true},
+    {"selector": ".license-plate.active", "label": "License plate display", "present": true},
+    {"selector": ".extend-context-menu-button", "label": "Extend button", "present": true},
+    {"selector": ".stop-context-menu-button", "label": "Stop/Cancel button", "present": true},
+    {"selector": ".time-container", "label": "Time display container", "present": true},
+    {"selector": ".parking-action-balance", "label": "Balance display", "present": true}
+  ],
+  "missing_selectors": [],
+  "timestamp": "2026-03-31T13:27:13.889549Z",
+  "total_response_time_ms": 12500.3
+}
+```
+
+When `"status"` is `"degraded"`, some selectors are missing from the dashboard — the scraper may produce incorrect results. When `"status"` is `"error"`, the scraper could not reach the 2Park website at all.
 
 ### Get Account Balance
 
