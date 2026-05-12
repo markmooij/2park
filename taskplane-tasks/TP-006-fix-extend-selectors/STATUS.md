@@ -1,6 +1,6 @@
 # TP-006: Fix `extend_booking()` Selectors — Status
 
-**Current Step:** Step 1: Rewrite `extend_booking()` with Correct Selectors
+**Current Step:** Step 3: Testing & Verification
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-05-12
 **Review Level:** 2
@@ -45,10 +45,10 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] FULL test suite passing (`pytest`)
-- [ ] All failures fixed
+- [x] FULL test suite passing (`pytest`) — 24 passed, 0 failures
+- [x] All failures fixed (none)
 
 ---
 
