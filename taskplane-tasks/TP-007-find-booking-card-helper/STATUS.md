@@ -1,7 +1,7 @@
 # TP-007: Shared `_find_booking_card()` Helper — Status
 
-**Current Step:** Step 0: Preflight
-**Status:** 🟡 In Progress
+**Current Step:** Step 4: Documentation & Delivery
+**Status:** ✅ Complete
 **Last Updated:** 2026-05-12
 **Review Level:** 1
 **Review Counter:** 0
@@ -50,9 +50,9 @@
 ---
 
 ### Step 4: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Discoveries logged
+- [x] Discoveries logged
 
 ---
 
@@ -67,6 +67,10 @@
 
 | Discovery | Disposition | Location |
 |-----------|-------------|----------|
+| `normalize_license_plate()` from models.py was available but not used in scraper — now imported and used in `_find_booking_card()` | Applied | scraper.py |
+| `cancel_booking()` was already on the dashboard but didn't click "Lopend" tab — the helper ensures consistent navigation | Applied | scraper.py |
+| Both methods had ~130 lines of duplicated card-finding logic — eliminated via shared helper | Applied | scraper.py |
+| `cancel_booking()` didn't extract start/end times from cards — helper now provides this data | Applied | scraper.py |
 
 ---
 
