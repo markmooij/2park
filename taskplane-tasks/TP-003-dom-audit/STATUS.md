@@ -1,11 +1,11 @@
 # TP-003: DOM Audit (Playwright Dump) — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 0: Preflight
+**Status:** 🟡 In Progress
+**Last Updated:** 2026-05-12
 **Review Level:** 0
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** S
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,10 +14,10 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
-- [ ] Verify credentials are available (TWOPARK_EMAIL and TWOPARK_PASSWORD from `.env`)
-- [ ] Verify Playwright is installed
+- [x] Verify credentials are available (TWOPARK_EMAIL and TWOPARK_PASSWORD from `.env`)
+- [x] Verify Playwright is installed
 
 ---
 
@@ -65,6 +65,8 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 21:50 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 21:50 | Step 0 started | Preflight |
 
 ---
 
