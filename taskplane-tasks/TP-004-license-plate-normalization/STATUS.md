@@ -1,11 +1,11 @@
 # TP-004: License Plate Normalization at API Boundary — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-05-08
+**Current Step:** Step 0: Preflight
+**Status:** 🟡 In Progress
+**Last Updated:** 2026-05-12
 **Review Level:** 1
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** S
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,20 +14,20 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read `models.py` to understand current validation
-- [ ] Read `api.py` to identify all endpoints
-- [ ] Verify TP-003 DOM reference available
+- [x] Read `models.py` to understand current validation
+- [x] Read `api.py` to identify all endpoints
+- [x] Verify TP-003 DOM reference available
 
 ---
 
 ### Step 1: Add `normalize_license_plate()` to `models.py`
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
-- [ ] Create `normalize_license_plate()` utility
-- [ ] Add unit tests for normalization
-- [ ] Update `validate_license_plate()` to normalize before validation
+- [x] Create `normalize_license_plate()` utility
+- [x] Add unit tests for normalization
+- [x] Update `validate_license_plate()` to normalize before validation
 
 ---
 
@@ -76,6 +76,8 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-08 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-12 21:56 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-12 21:56 | Step 0 started | Preflight |
 
 ---
 

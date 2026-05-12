@@ -11,6 +11,22 @@ from pydantic import BaseModel, Field, field_validator
 # Request Models
 
 
+def normalize_license_plate(license_plate: str) -> str:
+    """
+    Normalize a Dutch license plate to the format used by 2park.nl
+
+    Strips hyphens, spaces, and converts to uppercase.
+    Idempotent — calling twice produces the same result.
+
+    Args:
+        license_plate: Any license plate string
+
+    Returns:
+        Normalized plate string (no hyphens, no spaces, uppercase)
+    """
+    return license_plate.strip().upper().replace("-", "").replace(" ", "")
+
+
 def validate_license_plate(license_plate: str) -> str:
     """
     Validate Dutch license plate format
@@ -21,44 +37,36 @@ def validate_license_plate(license_plate: str) -> str:
     - Temporary format: XX-XX-??
     - KV/KVX format: DD-LLLL (2 digits + 4 letters, e.g., 51PXPN)
     """
-    # Remove whitespace
-    license_plate = license_plate.strip().upper()
+    # Normalize first: strip whitespace, remove hyphens, uppercase
+    normalized = normalize_license_plate(license_plate)
 
-    # Dutch license plate patterns (case-insensitive)
+    if not normalized:
+        raise ValueError(
+            f"Invalid license plate format: '{license_plate}'. "
+            f"Plate is empty after normalization"
+        )
+
+    # Dutch license plate patterns (all checked against normalized, no-hyphen form)
     patterns = [
         # Current EU format (2 letters, 2 letters, 1 digit)
-        r"^[A-Z]{2}-[A-Z]{2}-[0-9]{1}$",
-        # Current EU format (2 letters, 3 digits)
-        r"^[A-Z]{2}-[0-9]{3}-[A-Z]{2}$",
-        # Current EU format (2 letters, 2 digits, 1 letter)
-        r"^[A-Z]{2}-[0-9]{2}-[A-Z]{1}$",
-        # Historic format (2 letters, 2 letters, 2 digits)
-        r"^[A-Z]{2}-[A-Z]{2}-[0-9]{2}$",
-        # Historic format (2 letters, 3 letters, 2 digits)
-        r"^[A-Z]{2}-[A-Z]{3}-[0-9]{2}$",
-        # Temporary format
-        r"^[A-Z]{2}-[A-Z]{2}-[\?]{2}$",
-        # KV/KVX format (2 digits + 4 letters, e.g., 51PXPN or 51-PXPN)
-        r"^[0-9]{2}-[A-Z]{4}$",
-        # Simple format without dashes
+        r"^[A-Z]{2}[A-Z]{2}[0-9]{1}$",
+        # Current EU format (2 letters, 3 digits, 2 letters)
         r"^[A-Z]{2}[0-9]{3}[A-Z]{2}$",
+        # Current EU format (2 letters, 2 digits, 1 letter)
+        r"^[A-Z]{2}[0-9]{2}[A-Z]{1}$",
+        # Historic format (2 letters, 2 letters, 2 digits)
+        r"^[A-Z]{2}[A-Z]{2}[0-9]{2}$",
+        # Historic format (2 letters, 3 letters, 2 digits)
+        r"^[A-Z]{2}[A-Z]{3}[0-9]{2}$",
+        # Temporary format
+        r"^[A-Z]{2}[A-Z]{2}[\?]{2}$",
+        # KV/KVX format (2 digits + 4 letters, e.g., 51PXPN)
+        r"^[0-9]{2}[A-Z]{4}$",
     ]
 
-    # Check simple format without dashes first (XX123XY -> returns original with dashes if valid)
-    plate_no_dashes = license_plate.replace("-", "")
-
-    if re.match(r"^[A-Z]{2}[0-9]{3}[A-Z]{2}$", plate_no_dashes):
-        return license_plate  # Return original (may have dashes, validation passed on no-dashes version)
-
-    # Check KV/KVX format without dashes (DDLLLL, e.g., 51PXPN)
-    if re.match(r"^[0-9]{2}[A-Z]{4}$", plate_no_dashes):
-        return license_plate
-
-    # Validate with dashes against specific patterns
-
     for pattern in patterns:
-        if re.match(pattern, license_plate):
-            return license_plate
+        if re.match(pattern, normalized):
+            return normalized
 
     raise ValueError(
         f"Invalid license plate format: {license_plate}. "
