@@ -1,7 +1,7 @@
 # TP-004: License Plate Normalization at API Boundary — Status
 
-**Current Step:** Step 0: Preflight
-**Status:** 🟡 In Progress
+**Current Step:** Step 4: Documentation & Delivery
+**Status:** ✅ Complete
 **Last Updated:** 2026-05-12
 **Review Level:** 1
 **Review Counter:** 0
@@ -23,7 +23,7 @@
 ---
 
 ### Step 1: Add `normalize_license_plate()` to `models.py`
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Create `normalize_license_plate()` utility
 - [x] Add unit tests for normalization
@@ -32,7 +32,7 @@
 ---
 
 ### Step 2: Apply Normalization at API Boundary
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Normalize plate in `create_booking()` (already handled via Pydantic validator)
 - [x] Normalize plate in `extend_booking()`
@@ -42,18 +42,18 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] FULL test suite passing (`pytest`)
-- [ ] All failures fixed
+- [x] FULL test suite passing (`pytest`) — 17/17 passed
+- [x] All failures fixed (none)
 
 ---
 
 ### Step 4: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] `README.md` updated
-- [ ] Discoveries logged
+- [x] `README.md` updated with normalization note
+- [x] Discoveries logged
 
 ---
 
@@ -68,6 +68,9 @@
 
 | Discovery | Disposition | Location |
 |-----------|-------------|----------|
+| `validate_license_plate()` returned original string (with hyphens) — now returns normalized form | Fixed in Step 1 | `models.py` |
+| `extend_booking()` and `cancel_booking()` accepted unvalidated path params | Fixed in Step 2 | `api.py` |
+| Existing test assertions expected hyphenated plates — all updated for normalized format | Fixed in Step 1 | `tests/test_license_plate.py` |
 
 ---
 
