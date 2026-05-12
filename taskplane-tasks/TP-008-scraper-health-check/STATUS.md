@@ -1,7 +1,7 @@
 # TP-008: `/health/scraper` Selector Check — Status
 
-**Current Step:** Step 4: Testing & Verification
-**Status:** 🟡 In Progress
+**Current Step:** Step 5: Documentation & Delivery
+**Status:** ✅ Complete
 **Last Updated:** 2026-05-12
 **Review Level:** 2
 **Review Counter:** 5
@@ -61,10 +61,11 @@
 ---
 
 ### Step 5: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] `README.md` updated
-- [ ] Discoveries logged
+- [x] `README.md` updated with `/health/scraper` endpoint
+- [x] `API.md` updated with Scraper Health Check section
+- [x] Discoveries logged
 
 ---
 

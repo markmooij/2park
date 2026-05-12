@@ -9,6 +9,7 @@ Complete REST API for managing parking bookings on 2park.nl
 - [Base URL](#base-url)
 - [Endpoints](#endpoints)
   - [Health Check](#health-check)
+  - [Scraper Health Check](#scraper-health-check)
   - [Get Account Balance](#get-account-balance)
   - [List Active Bookings](#list-active-bookings)
   - [Create Booking](#create-booking)
@@ -32,7 +33,7 @@ The 2Park API provides a stateless REST interface for automating parking managem
 
 ## Authentication
 
-All endpoints except `/health` and `/` require a Bearer token.
+All endpoints except `/health`, `/health/scraper`, and `/` require a Bearer token.
 
 ### Setup
 
@@ -80,6 +81,47 @@ curl http://localhost:8090/health
   }
 }
 ```
+
+---
+
+
+### Scraper Health Check
+
+`GET /health/scraper`
+
+No authentication required. Designed for monitoring systems to detect scraper selector drift.
+
+Performs a live check by logging into the 2Park dashboard and verifying that all critical DOM selectors (tabs, booking cards, action buttons) are present.
+
+```bash
+curl http://localhost:8090/health/scraper
+```
+
+```json
+{
+  "status": "ok",
+  "selectors_checked": [
+    {"selector": ".tabs-container", "label": "Tab container", "present": true},
+    {"selector": ".tabText", "label": "Tab text element", "present": true},
+    {"selector": ".parkapp-item", "label": "Booking card item", "present": true},
+    {"selector": ".license-plate.active", "label": "License plate display", "present": true},
+    {"selector": ".extend-context-menu-button", "label": "Extend button", "present": true},
+    {"selector": ".stop-context-menu-button", "label": "Stop/Cancel button", "present": true},
+    {"selector": ".time-container", "label": "Time display container", "present": true},
+    {"selector": ".parking-action-balance", "label": "Balance display", "present": true}
+  ],
+  "missing_selectors": [],
+  "timestamp": "2026-03-31T13:27:13Z",
+  "total_response_time_ms": 12500.3
+}
+```
+
+**Response statuses:**
+| Status | Meaning |
+|--------|---------|
+| `ok` | All selectors present — scraper is healthy |
+| `degraded` | Some selectors missing — scraper may produce incorrect results |
+| `error` | Could not reach 2Park website or login failed |
 
 ---
 
