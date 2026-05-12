@@ -4,7 +4,7 @@
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-05-12
 **Review Level:** 2
-**Review Counter:** 1
+**Review Counter:** 2
 **Iteration:** 1
 **Size:** M
 
@@ -36,7 +36,7 @@
 ---
 
 ### Step 2: Handle Edge Cases
-**Status:** 🟨 In Progress
+**Status:** ✅ Complete
 
 - [x] Return proper `BookingNotFoundException` when no booking found
 - [x] Log available buttons and return `ScrapeErrorException` when extend button missing
@@ -64,6 +64,7 @@
 | # | Type | Step | Verdict | File |
 |---|------|------|---------|------|
 | R001 | code | 1 | APPROVE | — |
+| R002 | code | 2 | APPROVE | — |
 
 ---
 
@@ -94,3 +95,4 @@
 
 *Reserved for execution notes*
 | 2026-05-12 22:06 | Review R001 | code Step 1: APPROVE |
+| 2026-05-12 22:09 | Review R002 | code Step 2: APPROVE |
