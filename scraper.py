@@ -829,70 +829,13 @@ class TwoParkScraper:
                 f"Extending booking for {license_plate} by {additional_minutes} minutes"
             )
 
-            # Navigate to the dashboard (where bookings are visible)
-            await self.page.goto(
-                "https://mijn.2park.nl/",
-                timeout=self._get_timeout_ms("navigation"),
-            )
-            await self.page.wait_for_timeout(3000)
-            logger.info(f"Current URL: {self.page.url}")
-
-            # Click the "Lopend" (active) tab to ensure we're on the right tab
-            lopend_tabs = await self.page.query_selector_all(".tabs-container button")
-            for tab in lopend_tabs:
-                tab_text = await tab.inner_text()
-                if "Lopend" in tab_text:
-                    await tab.click()
-                    await self.page.wait_for_timeout(2000)
-                    logger.info("Clicked 'Lopend' tab")
-                    break
-
-            # Find the booking card using real selectors from DOM audit
-            # .parkapp-item is confirmed to match booking cards
-            booking_items = await self.page.query_selector_all(".parkapp-item")
-            logger.info(f"Found {len(booking_items)} booking item(s)")
-
-            target_item = None
-            for item in booking_items:
-                # Try .license-plate.active first (from DOM audit), fall back to .license-plate-text
-                license_element = await item.query_selector(
-                    ".license-plate.active, .license-plate-text"
-                )
-                if license_element:
-                    try:
-                        item_license = await license_element.inner_text()
-                        item_license = item_license.upper().replace(" ", "")
-                        target_plate = license_plate.upper().replace("-", "").replace(" ", "")
-                        logger.info(f"Checking booking with license: {item_license}")
-                        if item_license == target_plate:
-                            target_item = item
-                            break
-                    except Exception:
-                        continue
-
-            if not target_item:
-                # Take screenshot for debugging
-                try:
-                    await self.page.screenshot(path="/tmp/2park_extend_debug.png")
-                    logger.info("Screenshot saved to /tmp/2park_extend_debug.png")
-                except Exception:
-                    pass
-
-                # Log all visible license plates for debugging
-                all_licenses = await self.page.query_selector_all(
-                    ".license-plate.active, .license-plate-text"
-                )
-                logger.info(f"Total license elements found: {len(all_licenses)}")
-                for i, lic_elem in enumerate(all_licenses[:5]):
-                    try:
-                        lic_text = await lic_elem.inner_text()
-                        logger.info(f"  License {i}: {lic_text}")
-                    except Exception:
-                        pass
-
+            # Find the booking card using the shared helper
+            booking_card = await self._find_booking_card(license_plate)
+            if not booking_card:
                 raise BookingNotFoundException(
                     f"Could not find booking UI for {license_plate}"
                 )
+            target_item = booking_card["card_element"]
 
             # Click the extend button using real selector from DOM audit
             extend_button = await target_item.query_selector(".extend-context-menu-button")
@@ -1046,62 +989,13 @@ class TwoParkScraper:
         try:
             logger.info(f"Cancelling booking for {license_plate}")
 
-            # Stay on the current page (dashboard after login) - bookings are shown there
-            await self.page.wait_for_timeout(2000)
-            logger.info(f"Current URL: {self.page.url}")
-
-            # Take screenshot for debugging
-            try:
-                await self.page.screenshot(path="/tmp/2park_cancel_debug.png")
-                logger.info("Screenshot saved to /tmp/2park_cancel_debug.png")
-            except Exception:
-                pass
-
-            # Find the booking and click cancel button - try multiple selectors
-            booking_selectors = [
-                ".parkapp-item",
-                ".booking-item",
-                ".parking-item",
-                "[class*='parkapp']",
-                "[class*='booking']",
-                "[class*='parking']",
-                ".card",
-            ]
-
-            target_item = None
-            for selector in booking_selectors:
-                booking_items = await self.page.query_selector_all(selector)
-                logger.info(f"Found {len(booking_items)} items matching '{selector}'")
-
-                for item in booking_items:
-                    license_element = await item.query_selector(".license-plate-text, [class*='license'], [class*='plate']")
-                    if license_element:
-                        try:
-                            item_license = await license_element.inner_text()
-                            logger.info(f"Found booking with license: {item_license}")
-                            if item_license.upper().replace(" ", "") == license_plate.upper().replace("-", "").replace(" ", ""):
-                                target_item = item
-                                break
-                        except Exception:
-                            continue
-                if target_item:
-                    break
-
-            if not target_item:
-                # Log all license plates found on the page for debugging
-                all_licenses = await self.page.query_selector_all(".license-plate-text, [class*='license'], [class*='plate']")
-                logger.info(f"Total license elements found on page: {len(all_licenses)}")
-                for i, lic_elem in enumerate(all_licenses[:5]):
-                    try:
-                        lic_text = await lic_elem.inner_text()
-                        logger.info(f"  License {i}: {lic_text}")
-                    except:
-                        pass
-
-                logger.warning(f"Could not find booking for {license_plate} on page")
+            # Find the booking card using the shared helper
+            booking_card = await self._find_booking_card(license_plate)
+            if not booking_card:
                 raise BookingNotFoundException(
                     f"Could not find booking UI for {license_plate}"
                 )
+            target_item = booking_card["card_element"]
 
             # Look for cancel button - try multiple selectors
             cancel_selectors = [

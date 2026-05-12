@@ -33,11 +33,11 @@
 ---
 
 ### Step 2: Refactor Callers to Use the Helper
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Update `extend_booking()` to use `_find_booking_card()`
-- [ ] Update `cancel_booking()` to use `_find_booking_card()`
-- [ ] Verify both methods still work correctly
+- [x] Update `extend_booking()` to use `_find_booking_card()`
+- [x] Update `cancel_booking()` to use `_find_booking_card()`
+- [x] Verify both methods still work correctly
 
 ---
 
