@@ -938,6 +938,12 @@ class TwoParkScraper:
         except PlaywrightTimeoutError:
             raise TimeoutException("Timeout while extending booking")
         except Exception as e:
+            # Take screenshot for debugging
+            try:
+                await self.page.screenshot(path="/tmp/2park_extend_error.png")
+                logger.info("Screenshot saved to /tmp/2park_extend_error.png")
+            except Exception:
+                pass
             logger.error(f"Error extending booking: {e}")
             raise ScrapeErrorException(f"Failed to extend booking: {str(e)}")
 

@@ -36,11 +36,11 @@
 ---
 
 ### Step 2: Handle Edge Cases
-**Status:** ⬜ Not Started
+**Status:** 🟨 In Progress
 
-- [ ] Return proper `BookingNotFoundException` when no booking found
-- [ ] Log available buttons and return `ScrapeErrorException` when extend button missing
-- [ ] Take screenshot on failure
+- [x] Return proper `BookingNotFoundException` when no booking found
+- [x] Log available buttons and return `ScrapeErrorException` when extend button missing
+- [x] Take screenshot on failure
 
 ---
 
