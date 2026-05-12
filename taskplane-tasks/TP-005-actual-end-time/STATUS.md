@@ -1,7 +1,7 @@
 # TP-005: Return Actual End Time from Website — Status
 
-**Current Step:** Step 2: Update api.py to Propagate Actual End Time
-**Status:** 🟡 In Progress
+**Current Step:** Step 4: Documentation & Delivery
+**Status:** ✅ Complete
 **Last Updated:** 2026-05-12
 **Review Level:** 1
 **Review Counter:** 0
@@ -40,17 +40,17 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] FULL test suite passing (`pytest`)
-- [ ] All failures fixed
+- [x] FULL test suite passing (`pytest`) — 24 passed, 0 failures
+- [x] All failures fixed — no failures
 
 ---
 
 ### Step 4: Documentation & Delivery
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Discoveries logged
+- [x] Discoveries logged
 
 ---
 
@@ -65,6 +65,9 @@
 
 | Discovery | Disposition | Location |
 |-----------|-------------|----------|
+| `api.py` already propagated `result["end_time"]` directly — no structural change needed | Fixed | Step 2 |
+| `parse_dutch_time()` returns ISO strings; needed `date_parser.isoparse()` to convert back to datetime for comparison | Fixed | Step 1 |
+| Fallback path (verification fails) still uses calculated end_time as safe default | Designed | Step 1 |
 
 ---
 
