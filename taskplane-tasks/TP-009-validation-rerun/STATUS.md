@@ -86,6 +86,7 @@
 
 | # | Type | Step | Verdict | File |
 |---|------|------|---------|------|
+| R001 | code | 1 | APPROVE | — |
 
 ---
 
@@ -123,4 +124,3 @@
 ## Notes
 
 *Reserved for execution notes*
-| 2026-05-13 09:57 | Review R001 | code Step 1: APPROVE |
