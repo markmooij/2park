@@ -1,11 +1,11 @@
 # TP-009: Validation Re-Run — Consolidated API Test — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
+**Current Step:** Step 1: Run Full API Test Sequence
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-05-13
 **Review Level:** 2
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** M
 
 > **Hydration:** Checkboxes represent meaningful outcomes, not individual code
@@ -14,24 +14,24 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Verify API is reachable
-- [ ] Verify `/health/scraper` endpoint works
-- [ ] Verify credentials available
-- [ ] Verify Playwright installed
-- [ ] Verify no active bookings
+- [x] Verify API is reachable
+- [x] Verify `/health/scraper` endpoint works
+- [x] Verify credentials available
+- [x] Verify Playwright installed
+- [x] Verify no active bookings
 
 ---
 
 ### Step 1: Run Full API Test Sequence
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Create booking — verify HTTP 201, normalized plate
-- [ ] Extend booking — verify HTTP 200 (was failing in TP-001)
-- [ ] List active bookings — verify booking present
-- [ ] Cancel booking — verify HTTP 200
-- [ ] Log all responses to `RESULTS.md`
+- [x] Create booking — verify HTTP 201, normalized plate
+- [x] Extend booking — verify HTTP 200 (was failing in TP-001)
+- [x] List active bookings — verify booking present
+- [x] Cancel booking — verify HTTP 200
+- [x] Log all responses to `RESULTS.md`
 
 ---
 
@@ -101,6 +101,8 @@
 | Timestamp | Action | Outcome |
 |-----------|--------|---------|
 | 2026-05-13 | Task staged | PROMPT.md and STATUS.md created |
+| 2026-05-13 09:44 | Task started | Runtime V2 lane-runner execution |
+| 2026-05-13 09:44 | Step 0 started | Preflight |
 
 ---
 
