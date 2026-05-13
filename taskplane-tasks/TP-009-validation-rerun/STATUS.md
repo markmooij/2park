@@ -1,7 +1,7 @@
 # TP-009: Validation Re-Run — Consolidated API Test — Status
 
-**Current Step:** Step 6: Documentation & Delivery
-**Status:** ✅ Complete
+**Current Step:** Step 1: Run Full API Test Sequence
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-05-13
 **Review Level:** 2
 **Review Counter:** 0
@@ -25,7 +25,7 @@
 ---
 
 ### Step 1: Run Full API Test Sequence
-**Status:** ✅ Complete
+**Status:** 🟨 In Progress
 
 - [x] Create booking — verify HTTP 201, normalized plate
 - [x] Extend booking — verify HTTP 200 (was failing in TP-001)
