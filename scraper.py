@@ -686,30 +686,83 @@ class TwoParkScraper:
             # Verify booking was created and read back actual times from website
             await asyncio.sleep(2)  # Wait for booking to appear
             reservations = await self.get_active_reservations()
-            for res in reservations:
-                if res.license_plate.upper() == license_plate.upper():
-                    logger.info(f"Booking created successfully for {license_plate}")
+            logger.info(
+                f"Scraper found {len(reservations)} active reservations: "
+                + ", ".join(
+                    f"{r.license_plate}(start={r.start_time}, end={r.end_time})"
+                    for r in reservations
+                )
+            )
 
-                    # Parse the scraped end_time back to datetime for comparison
+            # Try to match the created booking by comparing scraped start_time
+            # with the calculated start_time. The 2Park website may have stale
+            # entries or the scraper's DOM selector may match the wrong element,
+            # so we validate both start and end times before trusting the scraped data.
+            matched = None
+            for res in reservations:
+                if res.license_plate.upper() != license_plate.upper():
+                    continue
+                try:
+                    scraped_start = date_parser.isoparse(res.start_time)
+                    if scraped_start.tzinfo is None:
+                        scraped_start = scraped_start.replace(tzinfo=timezone.utc)
                     scraped_end = date_parser.isoparse(res.end_time)
                     if scraped_end.tzinfo is None:
                         scraped_end = scraped_end.replace(tzinfo=timezone.utc)
 
-                    # Check discrepancy between scraped and calculated end time
-                    time_diff_minutes = abs((scraped_end - end_time).total_seconds()) / 60
-                    if time_diff_minutes > 5:
-                        logger.warning(
-                            f"End time discrepancy: calculated={end_time.isoformat()}, "
-                            f"scraped={scraped_end.isoformat()}, "
-                            f"difference={time_diff_minutes:.1f} minutes"
-                        )
+                    start_diff = abs((scraped_start - start_time).total_seconds()) / 60
+                    end_diff = abs((scraped_end - end_time).total_seconds()) / 60
 
-                    return {
-                        "license_plate": license_plate,
-                        "start_time": start_time,
-                        "end_time": scraped_end,
-                        "status": "active",
-                    }
+                    if start_diff < 5 and end_diff < 5:
+                        matched = res
+                        logger.info(
+                            f"Matched reservation by start/end time "
+                            f"(start_diff={start_diff:.1f}, end_diff={end_diff:.1f} min)"
+                        )
+                        break
+                except Exception:
+                    pass
+
+            if matched is None:
+                # Fallback: use the first matching license plate
+                for res in reservations:
+                    if res.license_plate.upper() == license_plate.upper():
+                        matched = res
+                        logger.warning(
+                            f"Could not match by start/end time, using first "
+                            f"license-plate match for {license_plate}"
+                        )
+                        break
+
+            if matched:
+                logger.info(f"Booking created successfully for {license_plate}")
+
+                # Parse the scraped end_time back to datetime for comparison
+                scraped_end = date_parser.isoparse(matched.end_time)
+                if scraped_end.tzinfo is None:
+                    scraped_end = scraped_end.replace(tzinfo=timezone.utc)
+
+                # The 2Park website may display a default end-of-day time
+                # (e.g. "23:59") in its reservation list instead of the actual
+                # calculated end time.  If the scraped value differs significantly
+                # from the calculated one, trust the calculated value.
+                time_diff_minutes = abs((scraped_end - end_time).total_seconds()) / 60
+                if time_diff_minutes > 10:
+                    logger.warning(
+                        f"End time mismatch: calculated={end_time.isoformat()}, "
+                        f"scraped={scraped_end.isoformat()}, "
+                        f"difference={time_diff_minutes:.1f} min — using calculated value"
+                    )
+                    final_end_time = end_time
+                else:
+                    final_end_time = scraped_end
+
+                return {
+                    "license_plate": license_plate,
+                    "start_time": start_time,
+                    "end_time": final_end_time,
+                    "status": "active",
+                }
 
             # If we get here, booking might not have been created
             logger.warning("Booking creation unclear - verification failed")

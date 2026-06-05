@@ -336,8 +336,20 @@ async def list_bookings(
                     end_dt = datetime.fromisoformat(res.end_time.replace("Z", "+00:00"))
                 except ValueError:
                     end_dt = datetime.now(timezone.utc)
+
+                # The 2Park website displays "23:59" as a placeholder end-of-day
+                # time in its reservation list, regardless of the actual booking
+                # end time.  If the scraped end time is 23:59 (hour==23 and
+                # minute==59), treat it as unreliable and fall back to the
+                # start time so the client gets a sensible value.
+                if end_dt.hour == 23 and end_dt.minute == 59:
+                    logger_with_id.warning(
+                        f"Scraped end_time is 23:59 (website placeholder) for "
+                        f"{res.license_plate}; using start_time as fallback"
+                    )
+                    end_dt = start_dt
             else:
-                end_dt = datetime.now(timezone.utc)
+                end_dt = start_dt
 
             bookings.append(
                 BookingResponse(
