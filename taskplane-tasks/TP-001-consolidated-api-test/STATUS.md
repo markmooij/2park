@@ -1,7 +1,7 @@
 # TP-001: Consolidated End-to-End API Test Run - Status
 
 **Current Step:** Step 8: Cleanup & Documentation
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 **Last Updated:** 2026-05-08
 **Review Level:** 1
 **Review Counter:** 0
@@ -14,7 +14,7 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Verify API is reachable: `curl http://rasp-pi-4-service.local:8090/health`
 - [x] Verify credentials are available (TWOPARK_EMAIL and TWOPARK_PASSWORD env vars or stored securely)
@@ -23,7 +23,7 @@
 ---
 
 ### Step 1: API Test Sequence - Create Booking
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Create a booking for license plate `51-PX-PN` with duration 120 minutes using `start_time: "now"`
 - [x] Verify the API returns HTTP 201 with correct booking details
@@ -32,7 +32,7 @@
 ---
 
 ### Step 2: API Test Sequence - Extend Booking
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Extend the booking for `51-PX-PN` by 60 additional minutes
 - [x] Verify the API returns HTTP 200 with the new_end_time
@@ -49,7 +49,7 @@
 ---
 
 ### Step 3: API Test Sequence - List Active Bookings
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] GET `/api/bookings` to confirm the booking is still active
 - [x] Verify the booking appears in the list with correct license_plate and status
@@ -63,7 +63,7 @@
 ---
 
 ### Step 4: API Test Sequence - Cancel Booking
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] POST to `/api/bookings/51-PX-PN/cancel`
 - [x] Verify the API returns HTTP 200 with status: "cancelled"
@@ -72,7 +72,7 @@
 ---
 
 ### Step 5: Independent Playwright Verification - Booking Created
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Launch a separate Playwright browser session
 - [x] Log in to `https://mijn.2park.nl/login` with credentials
@@ -87,7 +87,7 @@
 ---
 
 ### Step 6: Independent Playwright Verification - Booking Extended
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Refresh the dashboard
 - [x] Verify the booking end time reflects the extension (+60 minutes)
@@ -100,7 +100,7 @@
 ---
 
 ### Step 7: Independent Playwright Verification - Booking Cancelled
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Refresh the dashboard
 - [x] Verify the cancelled booking no longer appears in active bookings
@@ -112,7 +112,7 @@
 ---
 
 ### Step 8: Cleanup & Documentation
-**Status:** ✅ Complete
+**Status:** 🔵 Ready for Execution
 
 - [x] Ensure all test bookings are cancelled (verify via API)
 - [x] Compile final RESULTS.md with full report
