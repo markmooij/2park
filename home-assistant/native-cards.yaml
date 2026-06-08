@@ -1,0 +1,123 @@
+# ============================================================
+# Home Assistant — 2Park Dashboard (Native Cards Version)
+# ============================================================
+#
+# This version uses ONLY built-in Home Assistant cards.
+# No HACS or custom cards required.
+#
+# Add to your dashboard via UI:
+#   1. Add card → "Entities"
+#   2. Select the 2Park sensors
+#   3. Add "Button" cards for cancel/extend actions
+#
+# ============================================================
+# ENTITY CARD — Shows balance and booking count
+# ============================================================
+#
+# type: entities
+# title: 2Park
+# show_header_toggle: false
+# entities:
+#   - sensor.twopark_balance
+#   - sensor.twopark_bookings
+#   - sensor.twopark_summary
+#
+# ============================================================
+# BUTTON CARDS — Cancel & Extend actions
+# ============================================================
+#
+# Add these as separate "Button" cards in your dashboard.
+# You'll need one set per booking (manually add each).
+#
+# CANCEL BUTTON EXAMPLE:
+# type: button
+# name: Cancel 51PXPN
+# icon: mdi:cancel
+# tap_action:
+#   action: call-service
+#   service: rest_command.cancel_twopark_booking
+#   data:
+#     license_plate: "51PXPN"
+# confirmation:
+#   text: Cancel booking for 51PXPN?
+#
+# EXTEND BUTTON EXAMPLE:
+# type: button
+# name: Extend 51PXPN +60min
+# icon: mdi:arrow-up-bold
+# tap_action:
+#   action: call-service
+#   service: rest_command.extend_twopark_booking
+#   data:
+#     license_plate: "51PXPN"
+#     additional_minutes: 60
+# confirmation:
+#   text: Extend 51PXPN by 60 minutes?
+#
+# ============================================================
+# COMPLETE NATIVE DASHBOARD (copy into YAML mode)
+# ============================================================
+
+type: vertical-stack
+cards:
+  # Balance card
+  - type: entities
+    title: "2Park — Balance"
+    show_header_toggle: false
+    entities:
+      - entity: sensor.twopark_balance
+        name: Balance
+        icon: mdi:wallet
+      - entity: sensor.twopark_summary
+        name: Summary
+        icon: mdi:information-outline
+
+  # Booking count
+  - type: entities
+    title: "2Park — Active Bookings"
+    show_header_toggle: false
+    entities:
+      - entity: sensor.twopark_bookings
+        name: Active Bookings
+        icon: mdi:parking
+
+  # Cancel buttons — one per booking
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: "Cancel 51PXPN"
+        icon: mdi:cancel
+        tap_action:
+          action: call-service
+          service: rest_command.cancel_twopark_booking
+          data:
+            license_plate: "51PXPN"
+        confirmation:
+          text: "Cancel booking for 51PXPN?"
+
+  # Extend buttons — one per booking
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: "Extend 51PXPN +60m"
+        icon: mdi:arrow-up-bold
+        tap_action:
+          action: call-service
+          service: rest_command.extend_twopark_booking
+          data:
+            license_plate: "51PXPN"
+            additional_minutes: 60
+        confirmation:
+          text: "Extend 51PXPN by 60 minutes?"
+
+# ============================================================
+# NOTES
+# ============================================================
+#
+# - Replace "51PXPN" with your actual license plate(s)
+# - Add more button cards for additional bookings
+# - The balance and booking count update automatically via REST sensors
+# - Cancel/Extend require manual button presses (no auto-detection of plates)
+#
+# For a fully dynamic setup (auto-detecting booking plates),
+# use the button-card custom card version (see lovelace-card.yaml)

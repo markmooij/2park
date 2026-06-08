@@ -1,0 +1,256 @@
+# ============================================================
+# Home Assistant — 2Park Lovelace Card
+# ============================================================
+#
+# Prerequisites:
+#   1. Install "button-card" from HACS (https://github.com/custom-cards/button-card)
+#   2. Add the resources to your dashboard:
+#        resources:
+#          - url: /hacsfiles/button-card/button-card.js
+#            type: module
+#   3. Add sensors.yaml and rest_commands.yaml (see sibling files)
+#   4. Restart HA
+#
+# How to use:
+#   - This is a YAML card. In the HA UI:
+#       1. Go to your dashboard → Edit (⋮ menu) → Three dots → Edit as YAML
+#       2. Replace the entire card content with the card below
+#   - Or use the UI card editor:
+#       1. Add card → "button-card" (custom card)
+#       2. Paste the template definitions first (see section A below)
+#       3. Then create the main card (see section B)
+#
+# ============================================================
+# A. BUTTON-CARD TEMPLATES
+#    Add these to your ui-lovelace.yaml under:
+#      button_card_templates: { ... }
+#    Or paste them at the top of this card.
+# ============================================================
+
+# --- Balance Card Template ---
+balance_card:
+  type: custom:button-card
+  icon: "mdi:wallet"
+  aspect_ratio: 2/1
+  name: Account Balance
+  label: >
+    ={{ "%0.2f"|format(states('sensor.twopark_balance') | float(0)) }}
+    {{ state_attr('sensor.twopark_balance', 'currency') or '' }}
+  styles:
+    icon:
+      - color: green
+      - font-size: 20px
+    name:
+      - font-size: 13px
+      - color: rgba(0,0,0,0.5)
+    label:
+      - font-size: 22px
+      - font-weight: bold
+      - color: var(--primary-text-color)
+  state:
+    - operator: template
+      value: "{{ states('sensor.twopark_balance') | float(0) > 0 }}"
+      styles:
+        icon:
+          - color: green
+    - operator: template
+      value: "{{ states('sensor.twopark_balance') | float(0) <= 0 }}"
+      styles:
+        icon:
+          - color: red
+
+# --- Booking Card Template ---
+# Each booking card shows license plate, times, and action buttons.
+# To add a new booking, duplicate this card and change the variables.
+booking_card:
+  type: custom:button-card
+  aspect_ratio: 1/1
+  styles:
+    grid:
+      - grid-template-areas: '"i n" "i l" "i b"'
+      - grid-template-columns: 36px 1fr
+      - grid-template-rows: min-content min-content min-content
+    card:
+      - border-radius: 12px
+      - padding: 12px
+      - background: var(--card-background-color)
+      - box-shadow: 0 1px 4px rgba(0,0,0,0.08)
+    name:
+      - font-size: 16px
+      - font-weight: bold
+      - color: var(--primary-text-color)
+    label:
+      - font-size: 12px
+      - color: rgba(0,0,0,0.6)
+    icon:
+      - font-size: 24px
+  variables:
+    plate: "UNKNOWN"
+    start: ""
+    end: ""
+    status: "active"
+    cancel_url: ""
+    extend_url: ""
+  icon: "mdi:car"
+  name: "={{ vars.plate }}"
+  label: >
+    ={{ vars.start != '' | ternary(
+      "from_iso8601(vars.start) | as_local | timestamp_custom('%H:%M')",
+      "—"
+    }} → {{ vars.end != '' | ternary(
+      "from_iso8601(vars.end) | as_local | timestamp_custom('%H:%M')",
+      "—"
+    ) }}
+  color: >
+    {{ "var(--label-badge-green)" if vars.status == "active" else "var(--label-badge-red)" }}
+  tap_action:
+    action: call-service
+    service: rest_command.cancel_twopark_booking
+    service_data:
+      license_plate: "={{ vars.plate }}"
+    confirmation:
+      text: "Cancel booking for {{ vars.plate }}?"
+  hold_action:
+    action: call-service
+    service: rest_command.extend_twopark_booking
+    service_data:
+      license_plate: "={{ vars.plate }}"
+      additional_minutes: 60
+    confirmation:
+      text: "Extend {{ vars.plate }} by 60 minutes?"
+
+# ============================================================
+# B. MAIN DASHBOARD CARD
+#    Copy this entire block into your Lovelace dashboard as a
+#    "custom:button-card" card.  Duplicate the booking_card
+#    entries for each of your active bookings.
+# ============================================================
+
+type: custom:button-card
+name: 2Park Dashboard
+icon: "mdi:car-key"
+styles:
+  name:
+    - font-size: 18px
+    - font-weight: bold
+    - color: var(--primary-text-color)
+  card:
+    - border-radius: 16px
+    - padding: 16px
+    - background: linear-gradient(135deg, var(--card-background-color) 0%, color-mix(in srgb, var(--card-background-color) 95%, white) 100%)
+
+# Balance section
+tap_action:
+  action: none
+
+# Show balance at top
+extra_styles: |
+  ha-card {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+# Layout: balance row + bookings
+layout: horizontal
+cards:
+  # LEFT COLUMN: Balance + Booking count
+  - type: custom:button-card
+    icon: "mdi:wallet"
+    aspect_ratio: 1/1
+    name: Balance
+    label: >
+      =€{{ "%0.2f"|format(states('sensor.twopark_balance') | float(0)) }}
+    styles:
+      icon:
+        - color: green
+        - font-size: 28px
+      name:
+        - font-size: 14px
+        - color: rgba(0,0,0,0.5)
+      label:
+        - font-size: 24px
+        - font-weight: bold
+    state:
+      - operator: template
+        value: "{{ states('sensor.twopark_balance') | float(0) > 0 }}"
+        styles:
+          icon:
+            - color: green
+      - operator: default
+        styles:
+          icon:
+            - color: red
+
+  - type: custom:button-card
+    icon: "mdi:parking"
+    aspect_ratio: 1/1
+    name: Active
+    label: >
+      ={{ states('sensor.twopark_bookings') | int(0) }} booking(s)
+    styles:
+      icon:
+        - color: orange
+      name:
+        - font-size: 14px
+        - color: rgba(0,0,0,0.5)
+      label:
+        - font-size: 20px
+        - font-weight: bold
+    state:
+      - operator: template
+        value: "{{ states('sensor.twopark_bookings') | int(0) > 0 }}"
+        styles:
+          icon:
+            - color: orange
+      - operator: default
+        styles:
+          icon:
+            - color: grey
+
+# RIGHT COLUMN: Individual booking cards
+# Duplicate each booking_card entry for additional bookings.
+# Change the variables (plate, start, end) to match your bookings.
+#
+# The times are ISO 8601 format. Use the current times from
+# the API response when setting up each card.
+#
+# How to get current booking times:
+#   curl -H "Authorization: Bearer $TOKEN" \
+#     http://rasp-pi-4-service.local:8090/api/bookings
+#   Then copy the start_time and end_time values.
+
+# --- BOOKING 1: Replace with your actual booking data ---
+# - type: custom:button-card
+#   template: booking_card
+#   variables:
+#     plate: "51PXPN"
+#     start: "2026-06-05T14:00:00Z"
+#     end: "2026-06-05T16:00:00Z"
+#     status: "active"
+
+# --- BOOKING 2: Replace with your actual booking data ---
+# - type: custom:button-card
+#   template: booking_card
+#   variables:
+#     plate: "XX-123-Y"
+#     start: "2026-06-05T10:00:00Z"
+#     end: "2026-06-05T12:00:00Z"
+#     status: "active"
+
+# ============================================================
+# C. AUTOMATION: Auto-update booking times from API
+#    This automation periodically fetches booking times and
+#    sets them as attributes that the card can read.
+#    Add to automations.yaml:
+# ============================================================
+
+# - alias: "2Park - Update booking times"
+#   description: "Fetch current booking times from 2Park API"
+#   trigger:
+#     - platform: time_pattern
+#       minutes: "/5"  # Every 5 minutes
+#     - platform: homeassistant
+#       event: start
+#   action:
+#     - service: rest_command.refresh_twopark_bookings
+#       # (Define this as a custom REST command that sets template sensor attributes)

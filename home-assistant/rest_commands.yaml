@@ -1,0 +1,33 @@
+# Home Assistant REST Commands for 2Park API
+# Add to rest_commands.yaml or inside a rest_command: block in configuration.yaml
+#
+# Usage from automations or UI actions:
+#
+# Cancel booking:
+#   service: rest_command.cancel_twopark_booking
+#   data:
+#     license_plate: "51PXPN"
+#
+# Extend booking by 60 minutes:
+#   service: rest_command.extend_twopark_booking
+#   data:
+#     license_plate: "51PXPN"
+#     additional_minutes: 60
+
+cancel_twopark_booking:
+  url: "http://rasp-pi-4-service.local:8090/api/bookings/{{ license_plate }}/cancel"
+  method: POST
+  headers:
+    Authorization: !secret twopark_api_token
+    Content-Type: application/json
+  timeout: 120
+  response_variable: cancel_response
+
+extend_twopark_booking:
+  url: "http://rasp-pi-4-service.local:8090/api/bookings/{{ license_plate }}/extend"
+  method: POST
+  headers:
+    Authorization: !secret twopark_api_token
+    Content-Type: application/json
+  payload: '{"additional_minutes": {{ additional_minutes }}}'
+  timeout: 120

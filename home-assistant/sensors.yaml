@@ -1,0 +1,56 @@
+# Home Assistant REST Sensors for 2Park API
+# Add to sensors.yaml or inside a sensors: block in configuration.yaml
+#
+# Prerequisites:
+#   1. Add the token to secrets.yaml (see secrets.yaml)
+#   2. No additional HA integrations needed (rest is built-in)
+
+# --- Account Balance ---
+- platform: rest
+  name: "2Park Balance"
+  resource: http://rasp-pi-4-service.local:8090/api/account/balance
+  method: GET
+  headers:
+    Authorization: !secret twopark_api_token
+    Content-Type: application/json
+  value_template: "{{ value_json.balance }}"
+  unit_of_measurement: "EUR"
+  json_attributes:
+    - currency
+    - last_checked
+  scan_interval: 300  # 5 min — balance doesn't change often
+
+# --- Active Bookings ---
+- platform: rest
+  name: "2Park Bookings"
+  resource: http://rasp-pi-4-service.local:8090/api/bookings
+  method: GET
+  headers:
+    Authorization: !secret twopark_api_token
+    Content-Type: application/json
+  value_template: "{{ value_json.count }}"
+  json_attributes:
+    - bookings
+  scan_interval: 60  # 1 min — bookings can change
+
+# --- Helper: formatted booking list ---
+# This template sensor combines balance + bookings into a
+# human-readable summary that any card can display.
+- platform: template
+  sensors:
+    twopark_summary:
+      friendly_name: "2Park Summary"
+      value_template: >
+        {% set count = states('sensor.twopark_bookings') | int %}
+        {% set balance = states('sensor.twopark_balance') | float %}
+        {% if count == 0 %}
+          No active bookings · Balance: €{{ '%.2f'|format(balance) }}
+        {% else %}
+          {{ count }} active booking(s) · Balance: €{{ '%.2f'|format(balance) }}
+        {% endif %}
+      attribute_templates:
+        balance: "{{ states('sensor.twopark_balance') }}"
+        currency: "{{ state_attr('sensor.twopark_balance', 'currency') }}"
+        last_checked: "{{ state_attr('sensor.twopark_balance', 'last_checked') }}"
+        booking_count: "{{ states('sensor.twopark_bookings') }}"
+        bookings: "{{ state_attr('sensor.twopark_bookings', 'bookings') | default('[]') }}"
