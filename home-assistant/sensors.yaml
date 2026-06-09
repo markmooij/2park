@@ -32,25 +32,3 @@
   json_attributes:
     - bookings
   scan_interval: 60  # 1 min — bookings can change
-
-# --- Helper: formatted booking list ---
-# This template sensor combines balance + bookings into a
-# human-readable summary that any card can display.
-- platform: template
-  sensors:
-    twopark_summary:
-      friendly_name: "2Park Summary"
-      value_template: >
-        {% set count = states('sensor.twopark_bookings') | int %}
-        {% set balance = states('sensor.twopark_balance') | float %}
-        {% if count == 0 %}
-          No active bookings · Balance: €{{ '%.2f'|format(balance) }}
-        {% else %}
-          {{ count }} active booking(s) · Balance: €{{ '%.2f'|format(balance) }}
-        {% endif %}
-      attribute_templates:
-        balance: "{{ states('sensor.twopark_balance') }}"
-        currency: "{{ state_attr('sensor.twopark_balance', 'currency') }}"
-        last_checked: "{{ state_attr('sensor.twopark_balance', 'last_checked') }}"
-        booking_count: "{{ states('sensor.twopark_bookings') }}"
-        bookings: "{{ state_attr('sensor.twopark_bookings', 'bookings') | default('[]') }}"

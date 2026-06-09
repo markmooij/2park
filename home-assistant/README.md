@@ -5,6 +5,14 @@
 # For the dashboard card, install the custom card:
 #   HACS → Frontend → Search "button-card" → Install
 #
+# Files:
+#   sensors.yaml      - REST sensors for balance & bookings
+#   template.yaml     - Template sensor for formatted summary (use `template:` key)
+#   rest_commands.yaml - REST commands for cancel & extend
+#   secrets.yaml      - API token
+#   lovelace-card.yaml - Full dashboard with button-card
+#   native-cards.yaml  - Dashboard using only (built-in cards)
+#
 # ============================================================
 # 1. REST SENSORS (add to: sensors.yaml or inside sensors: block)
 # ============================================================
