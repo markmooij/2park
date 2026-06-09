@@ -1,25 +1,25 @@
 # Home Assistant Template Entities for 2Park API
-# Add to configuration.yaml under the template: key (NOT under sensor:)
-#
-# Example in configuration.yaml:
+# Add to configuration.yaml as:
 #   template: !include template.yaml
+#
+# The template integration expects a list of entity definitions.
 
-sensor:
-  # --- Helper: formatted booking summary ---
-  # Combines balance + bookings into a human-readable string
-  # that any card can display.
-  - name: "2Park Summary"
-    state: >
-      {% set count = states('sensor.twopark_bookings') | int %}
-      {% set balance = states('sensor.twopark_balance') | float %}
-      {% if count == 0 %}
-        No active bookings · Balance: €{{ '%.2f'|format(balance) }}
-      {% else %}
-        {{ count }} active booking(s) · Balance: €{{ '%.2f'|format(balance) }}
-      {% endif %}
-    attributes:
-      balance: "{{ states('sensor.twopark_balance') }}"
-      currency: "{{ state_attr('sensor.twopark_balance', 'currency') }}"
-      last_checked: "{{ state_attr('sensor.twopark_balance', 'last_checked') }}"
-      booking_count: "{{ states('sensor.twopark_bookings') }}"
-      bookings: "{{ state_attr('sensor.twopark_bookings', 'bookings') | default('[]') }}"
+- sensor:
+    # --- Helper: formatted booking summary ---
+    # Combines balance + bookings into a human-readable string
+    # that any card can display.
+    - name: "2Park Summary"
+      state: >
+        {% set count = states('sensor.twopark_bookings') | int %}
+        {% set balance = states('sensor.twopark_balance') | float %}
+        {% if count == 0 %}
+          No active bookings · Balance: €{{ '%.2f'|format(balance) }}
+        {% else %}
+          {{ count }} active booking(s) · Balance: €{{ '%.2f'|format(balance) }}
+        {% endif %}
+      attributes:
+        balance: "{{ states('sensor.twopark_balance') }}"
+        currency: "{{ state_attr('sensor.twopark_balance', 'currency') }}"
+        last_checked: "{{ state_attr('sensor.twopark_balance', 'last_checked') }}"
+        booking_count: "{{ states('sensor.twopark_bookings') }}"
+        bookings: "{{ state_attr('sensor.twopark_bookings', 'bookings') | default('[]') }}"
