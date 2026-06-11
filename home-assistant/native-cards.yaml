@@ -19,7 +19,7 @@
 # show_header_toggle: false
 # entities:
 #   - sensor.twopark_balance
-#   - sensor.twopark_bookings
+#   - sensor.twopark_bookings_count
 #   - sensor.twopark_summary
 #
 # ============================================================
@@ -77,7 +77,7 @@ cards:
     title: "2Park — Active Bookings"
     show_header_toggle: false
     entities:
-      - entity: sensor.twopark_bookings
+      - entity: sensor.twopark_bookings_count
         name: Active Bookings
         icon: mdi:parking
 
