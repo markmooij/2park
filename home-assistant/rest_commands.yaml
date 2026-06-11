@@ -21,7 +21,6 @@ cancel_twopark_booking:
     Authorization: !secret twopark_api_token
     Content-Type: application/json
   timeout: 120
-  response_variable: cancel_response
 
 extend_twopark_booking:
   url: "http://rasp-pi-4-service.local:8090/api/bookings/{{ license_plate }}/extend"
