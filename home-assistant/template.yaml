@@ -10,8 +10,10 @@
     # that any card can display.
     - name: "2Park Summary"
       state: >
-        {% set count = states('sensor.twopark_bookings') | int %}
-        {% set balance = states('sensor.twopark_balance') | float %}
+        {% set count_str = states('sensor.twopark_bookings_count') %}
+        {% set balance_str = states('sensor.twopark_balance') %}
+        {% set count = count_str | int if count_str not in ['unknown', 'unavailable', 'none', ''] else 0 %}
+        {% set balance = balance_str | float if balance_str not in ['unknown', 'unavailable', 'none', ''] else 0 %}
         {% if count == 0 %}
           No active bookings · Balance: €{{ '%.2f'|format(balance) }}
         {% else %}
@@ -21,5 +23,5 @@
         balance: "{{ states('sensor.twopark_balance') }}"
         currency: "{{ state_attr('sensor.twopark_balance', 'currency') }}"
         last_checked: "{{ state_attr('sensor.twopark_balance', 'last_checked') }}"
-        booking_count: "{{ states('sensor.twopark_bookings') }}"
-        bookings: "{{ state_attr('sensor.twopark_bookings', 'bookings') | default('[]') }}"
+        booking_count: "{{ states('sensor.twopark_bookings_count') }}"
+        bookings: "{{ state_attr('sensor.twopark_bookings_count', 'bookings') | default('[]') }}"
