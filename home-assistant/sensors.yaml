@@ -13,7 +13,7 @@
   headers:
     Authorization: !secret twopark_api_token
     Content-Type: application/json
-  value_template: '{{ value_json.balance | default("") }}'
+  value_template: '{{ value_json.balance | default(0) }}'
   unit_of_measurement: "EUR"
   json_attributes:
     - currency
@@ -32,5 +32,5 @@
   value_template: '{{ value_json.count | default(0) }}'
   json_attributes:
     - bookings
-  scan_interval: 60  # 1 min — bookings can change
+  scan_interval: 300  # 5 min
   timeout: 10

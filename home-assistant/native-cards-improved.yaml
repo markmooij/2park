@@ -2,6 +2,9 @@
 # Home Assistant — 2Park Dashboard (Improved Native)
 # ============================================================
 #
+# This uses ONLY built-in Home Assistant cards.
+# No HACS or custom cards required.
+#
 # To use:
 #   1. In your HA dashboard → Edit → Three dots → Edit as YAML
 #   2. Replace the card content with the YAML below
@@ -22,7 +25,6 @@ cards:
           - entity: sensor.2park_balance
             name: " "
             icon: mdi:wallet
-
       - type: entities
         title: "Bookings"
         show_header_toggle: false
@@ -44,8 +46,6 @@ cards:
             license_plate: "51PXPN"
         confirmation:
           text: "Cancel booking for 51PXPN?"
-        show_state: false
-
       - type: button
         name: "+60m"
         icon: mdi:arrow-up-bold

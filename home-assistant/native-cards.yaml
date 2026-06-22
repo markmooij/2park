@@ -18,9 +18,9 @@
 # title: 2Park
 # show_header_toggle: false
 # entities:
-#   - sensor.twopark_balance
-#   - sensor.twopark_bookings_count
-#   - sensor.twopark_summary
+#   - sensor.2park_balance
+#   - sensor.2park_bookings_count
+#   - sensor.2park_summary
 #
 # ============================================================
 # BUTTON CARDS — Cancel & Extend actions
@@ -65,10 +65,10 @@ cards:
     title: "2Park — Balance"
     show_header_toggle: false
     entities:
-      - entity: sensor.twopark_balance
+      - entity: sensor.2park_balance
         name: Balance
         icon: mdi:wallet
-      - entity: sensor.twopark_summary
+      - entity: sensor.2park_summary
         name: Summary
         icon: mdi:information-outline
 
@@ -77,7 +77,7 @@ cards:
     title: "2Park — Active Bookings"
     show_header_toggle: false
     entities:
-      - entity: sensor.twopark_bookings_count
+      - entity: sensor.2park_bookings_count
         name: Active Bookings
         icon: mdi:parking
 
@@ -121,3 +121,9 @@ cards:
 #
 # For a fully dynamic setup (auto-detecting booking plates),
 # use the button-card custom card version (see lovelace-card.yaml)
+#
+# ENTITY IDs:
+#   sensor.2park_balance          — Current balance in EUR
+#   sensor.2park_bookings_count   — Number of active bookings
+#   sensor.2park_summary          — Formatted summary text
+# ============================================================
