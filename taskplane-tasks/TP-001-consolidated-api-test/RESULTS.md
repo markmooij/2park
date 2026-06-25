@@ -4,7 +4,7 @@
 **API URL:** http://rasp-pi-4-service.local:8090
 **Website:** https://mijn.2park.nl
 **License Plate:** 51-PX-PN
-**Bearer Token:** b6a32d1cde51a1dce7e21343f8233a501afe49cbf3bc0983263591fbf3e3ce43
+**Bearer Token:** your_token
 **Test Script:** test_run.py
 
 ---

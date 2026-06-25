@@ -52,7 +52,7 @@ Re-run the consolidated end-to-end API test (`test_run.py`) against the live Ras
 
 - **Workspace:** `/home/mark/Projects/2park`
 - **API URL:** `http://rasp-pi-4-service.local:8090`
-- **Bearer Token:** `b6a32d1cde51a1dce7e21343f8233a501afe49cbf3bc0983263591fbf3e3ce43`
+- **Bearer Token:** `your_token`
 - **License Plate:** `51-PX-PN`
 - **2Park Website:** `https://mijn.2park.nl` (slow — use generous timeouts)
 
