@@ -2,6 +2,11 @@
 # Home Assistant — 2Park Lovelace Card
 # ============================================================
 #
+# ⚠️ NOTE: This version requires the "button-card" custom card
+#   from HACS. If you prefer a fully native (no HACS) approach,
+#   use native-cards-improved.yaml instead — it uses only
+#   built-in Home Assistant cards and supports dynamic bookings.
+#
 # Prerequisites:
 #   1. Install "button-card" from HACS (https://github.com/custom-cards/button-card)
 #   2. Add the resources to your dashboard:
@@ -34,8 +39,8 @@ balance_card:
   aspect_ratio: 2/1
   name: Account Balance
   label: >
-    ={{ "%0.2f"|format(states('sensor.twopark_balance') | float(0)) }}
-    {{ state_attr('sensor.twopark_balance', 'currency') or '' }}
+    ={{ "%0.2f"|format(states('sensor.2park_balance') | float(0)) }}
+    {{ state_attr('sensor.2park_balance', 'currency') or '' }}
   styles:
     icon:
       - color: green
@@ -49,12 +54,12 @@ balance_card:
       - color: var(--primary-text-color)
   state:
     - operator: template
-      value: "{{ states('sensor.twopark_balance') | float(0) > 0 }}"
+      value: "{{ states('sensor.2park_balance') | float(0) > 0 }}"
       styles:
         icon:
           - color: green
     - operator: template
-      value: "{{ states('sensor.twopark_balance') | float(0) <= 0 }}"
+      value: "{{ states('sensor.2park_balance') | float(0) <= 0 }}"
       styles:
         icon:
           - color: red
@@ -143,7 +148,6 @@ styles:
 tap_action:
   action: none
 
-# Show balance at top
 extra_styles: |
   ha-card {
     max-width: 600px;
@@ -159,7 +163,7 @@ cards:
     aspect_ratio: 1/1
     name: Balance
     label: >
-      =€{{ "%0.2f"|format(states('sensor.twopark_balance') | float(0)) }}
+      =€{{ "%0.2f"|format(states('sensor.2park_balance') | float(0)) }}
     styles:
       icon:
         - color: green
@@ -172,7 +176,7 @@ cards:
         - font-weight: bold
     state:
       - operator: template
-        value: "{{ states('sensor.twopark_balance') | float(0) > 0 }}"
+        value: "{{ states('sensor.2park_balance') | float(0) > 0 }}"
         styles:
           icon:
             - color: green
@@ -186,7 +190,7 @@ cards:
     aspect_ratio: 1/1
     name: Active
     label: >
-      ={{ states('sensor.twopark_bookings') | int(0) }} booking(s)
+      ={{ states('sensor.2park_bookings_count') | int(0) }} booking(s)
     styles:
       icon:
         - color: orange
@@ -198,7 +202,7 @@ cards:
         - font-weight: bold
     state:
       - operator: template
-        value: "{{ states('sensor.twopark_bookings') | int(0) > 0 }}"
+        value: "{{ states('sensor.2park_bookings_count') | int(0) > 0 }}"
         styles:
           icon:
             - color: orange

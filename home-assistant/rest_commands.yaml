@@ -30,3 +30,12 @@ extend_twopark_booking:
     Content-Type: application/json
   payload: '{"additional_minutes": {{ additional_minutes }}}'
   timeout: 120
+
+create_twopark_booking:
+  url: "http://rasp-pi-4-service.local:8090/api/bookings"
+  method: POST
+  headers:
+    Authorization: !secret twopark_api_token
+    Content-Type: application/json
+  payload: '{"license_plate": "{{ license_plate }}", "start_time": "now", "duration_minutes": {{ duration_minutes }}}'
+  timeout: 120

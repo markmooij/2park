@@ -10,8 +10,8 @@
     # that any card can display.
     - name: "2Park Summary"
       state: >
-        {% set count_str = states('sensor.twopark_bookings_count') %}
-        {% set balance_str = states('sensor.twopark_balance') %}
+        {% set count_str = states('sensor.2park_bookings_count') %}
+        {% set balance_str = states('sensor.2park_balance') %}
         {% set count = count_str | int if count_str not in ['unknown', 'unavailable', 'none', ''] else 0 %}
         {% set balance = balance_str | float if balance_str not in ['unknown', 'unavailable', 'none', ''] else 0 %}
         {% if count == 0 %}
@@ -20,8 +20,83 @@
           {{ count }} active booking(s) · Balance: €{{ '%.2f'|format(balance) }}
         {% endif %}
       attributes:
-        balance: "{{ states('sensor.twopark_balance') }}"
-        currency: "{{ state_attr('sensor.twopark_balance', 'currency') }}"
-        last_checked: "{{ state_attr('sensor.twopark_balance', 'last_checked') }}"
-        booking_count: "{{ states('sensor.twopark_bookings_count') }}"
-        bookings: "{{ state_attr('sensor.twopark_bookings_count', 'bookings') | default('[]') }}"
+        balance: "{{ states('sensor.2park_balance') }}"
+        currency: "{{ state_attr('sensor.2park_balance', 'currency') }}"
+        last_checked: "{{ state_attr('sensor.2park_balance', 'last_checked') }}"
+        booking_count: "{{ states('sensor.2park_bookings_count') }}"
+        bookings: "{{ state_attr('sensor.2park_bookings_count', 'bookings') | default('[]') }}"
+
+    # --- Per-booking attributes for the dynamic dashboard card ---
+    # This sensor exposes individual booking fields so the dashboard
+    # can render a booking table row without hardcoding plates.
+    #
+    # Supports up to 5 concurrent active bookings.
+    # If you regularly have more, duplicate the patterns below.
+    - name: "2Park Bookings Dynamic"
+      state: "{{ states('sensor.2park_bookings_count') | int(0) }}"
+      attributes:
+        # Booking 1
+        booking_1_plate: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[0].license_plate | default('') if b | count > 0 else '' }}
+        booking_1_start: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[0].start_time | default('') if b | count > 0 else '' }}
+        booking_1_end: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[0].end_time | default('') if b | count > 0 else '' }}
+        booking_1_status: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[0].status | default('') if b | count > 0 else '' }}
+        # Booking 2
+        booking_2_plate: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[1].license_plate | default('') if b | count > 1 else '' }}
+        booking_2_start: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[1].start_time | default('') if b | count > 1 else '' }}
+        booking_2_end: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[1].end_time | default('') if b | count > 1 else '' }}
+        booking_2_status: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[1].status | default('') if b | count > 1 else '' }}
+        # Booking 3
+        booking_3_plate: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[2].license_plate | default('') if b | count > 2 else '' }}
+        booking_3_start: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[2].start_time | default('') if b | count > 2 else '' }}
+        booking_3_end: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[2].end_time | default('') if b | count > 2 else '' }}
+        booking_3_status: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[2].status | default('') if b | count > 2 else '' }}
+        # Booking 4
+        booking_4_plate: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[3].license_plate | default('') if b | count > 3 else '' }}
+        booking_4_start: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[3].start_time | default('') if b | count > 3 else '' }}
+        booking_4_end: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[3].end_time | default('') if b | count > 3 else '' }}
+        booking_4_status: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[3].status | default('') if b | count > 3 else '' }}
+        # Booking 5
+        booking_5_plate: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[4].license_plate | default('') if b | count > 4 else '' }}
+        booking_5_start: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[4].start_time | default('') if b | count > 4 else '' }}
+        booking_5_end: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[4].end_time | default('') if b | count > 4 else '' }}
+        booking_5_status: >
+          {% set b = state_attr('sensor.2park_bookings_count', 'bookings') %}
+          {{ b[4].status | default('') if b | count > 4 else '' }}

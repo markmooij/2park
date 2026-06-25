@@ -13,13 +13,13 @@
   headers:
     Authorization: !secret twopark_api_token
     Content-Type: application/json
-  value_template: '{{ value_json.balance | default(0) }}'
+  value_template: "{{ value_json.balance | default(0) }}"
   unit_of_measurement: "EUR"
   json_attributes:
     - currency
     - last_checked
-  scan_interval: 300  # 5 min — balance doesn't change often
-  timeout: 10
+  scan_interval: 300 # 5 min — balance doesn't change often
+  timeout: 30
 
 # --- Active Bookings Count ---
 - platform: rest
@@ -29,8 +29,8 @@
   headers:
     Authorization: !secret twopark_api_token
     Content-Type: application/json
-  value_template: '{{ value_json.count | default(0) }}'
+  value_template: "{{ value_json.count | default(0) }}"
   json_attributes:
     - bookings
-  scan_interval: 300  # 5 min
-  timeout: 10
+  scan_interval: 300 # 5 min
+  timeout: 30

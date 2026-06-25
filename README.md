@@ -262,116 +262,121 @@ The API is available at `http://localhost:8090`. The container includes a health
 
 The API is designed to work with Home Assistant's `rest` and `rest_command` integrations for automated parking based on presence detection.
 
-### Sensors: Balance and Bookings
+### Quick Setup (Files from `home-assistant/`)
 
-Add to `configuration.yaml`:
+The easiest way to set up the Home Assistant integration is to copy the files from the `home-assistant/` directory into your HA `/config/` folder:
 
-```yaml
-rest:
-  - resource: "http://YOUR_2PARK_SERVER:8090/api/account/balance"
-    method: GET
-    headers:
-      Authorization: "Bearer YOUR_API_TOKEN"
-    scan_interval: 7200
-    sensor:
-      - name: "2Park Balance"
-        value_template: "{{ value_json.balance }}"
-        device_class: monetary
-        unit_of_measurement: "EUR"
-        icon: "mdi:cash"
-
-  - resource: "http://YOUR_2PARK_SERVER:8090/api/bookings"
-    method: GET
-    headers:
-      Authorization: "Bearer YOUR_API_TOKEN"
-    scan_interval: 7200
-    sensor:
-      - name: "2Park Active Bookings"
-        value_template: "{{ value_json.count }}"
-        json_attributes:
-          - bookings
-        icon: "mdi:car"
-
-template:
-  - binary_sensor:
-      - name: "2Park Low Balance"
-        device_class: problem
-        icon: "mdi:alert-circle"
-        state: "{{ states('sensor.2park_balance') | float(0) < 5.0 }}"
+```bash
+scp home-assistant/*.yaml root@homeassistant.local:/config/
 ```
 
-### REST Commands
+Or copy manually via the File Editor add-on in HA.
+
+Then add these lines to your `/config/configuration.yaml`:
 
 ```yaml
-rest_command:
-  2park_create_booking:
-    url: "http://YOUR_2PARK_SERVER:8090/api/bookings"
-    method: POST
-    headers:
-      Authorization: "Bearer YOUR_API_TOKEN"
-      Content-Type: "application/json"
-    payload: >
-      {"license_plate": "{{ license_plate }}", "start_time": "now", "duration_minutes": {{ duration_minutes }}}
-    timeout: 120
-
-  2park_cancel_booking:
-    url: "http://YOUR_2PARK_SERVER:8090/api/bookings/{{ license_plate }}/cancel"
-    method: POST
-    headers:
-      Authorization: "Bearer YOUR_API_TOKEN"
-    timeout: 120
-
-  2park_extend_booking:
-    url: "http://YOUR_2PARK_SERVER:8090/api/bookings/{{ license_plate }}/extend"
-    method: POST
-    headers:
-      Authorization: "Bearer YOUR_API_TOKEN"
-      Content-Type: "application/json"
-    payload: >
-      {"additional_minutes": {{ additional_minutes }}}
-    timeout: 120
+sensor: !include sensors.yaml
+template: !include template.yaml
+rest_command: !include rest_commands.yaml
 ```
 
-**Important:** Set `timeout: 120` on all rest commands. Each API call launches a headless browser and logs in to 2park.nl, which takes 5-15 seconds. The default Home Assistant timeout of 10 seconds is too short.
+Finally, restart Home Assistant: **Settings → System → Power & Startup → Restart**.
 
-### Automation: Book on Arrival
+### What You Get
+
+| Component | Entity IDs |
+|-----------|------------|
+| **REST Sensors** | `sensor.2park_balance`, `sensor.2park_bookings_count` |
+| **Template Sensors** | `sensor.2park_summary`, `sensor.2park_bookings_dynamic`, `binary_sensor.2park_low_balance` |
+| **REST Commands** | `rest_command.cancel_twopark_booking`, `rest_command.extend_twopark_booking`, `rest_command.create_twopark_booking` |
+
+### Dashboard Card (Dynamic)
+
+The dashboard card is **fully dynamic** — it reads active bookings from the API and displays:
+
+- **Balance** card showing current account balance
+- **Bookings** card showing number of active bookings
+- **Booking rows** for each active booking, each with:
+  - License plate and end time display
+  - **Cancel** button (with confirmation dialog)
+  - **+60m** button to extend the booking by one hour
+- **No Active Bookings** placeholder when count is 0
+
+No hardcoded license plates required — the card adapts automatically based on what the API returns.
+
+#### Adding the Card to Your Dashboard
+
+1. Go to your dashboard → Edit → Three dots → **Edit as YAML**
+2. Paste the content from `home-assistant/native-cards-improved.yaml`
+3. Save
+
+#### How It Works
+
+The `sensor.2park_bookings_dynamic` template sensor (defined in `template.yaml`) parses the `bookings` JSON array from the API and exposes each booking's details as individual attributes:
+
+| Attribute | Example | Description |
+|-----------|---------|-------------|
+| `booking_1_plate` | `51PXPN` | License plate of booking 1 |
+| `booking_1_start` | `2026-03-31T14:46:00Z` | Start time of booking 1 |
+| `booking_1_end` | `2026-03-31T17:00:00Z` | End time of booking 1 |
+| `booking_1_status` | `active` | Status of booking 1 |
+| `booking_2_plate` ... `booking_5_*` | ... | Same for bookings 2-5 |
+
+Supports up to **5 concurrent bookings**. The dashboard card uses `conditional` cards to show rows only when a booking exists, and `button` cards with Jinja2 templates to dynamically set the license plate for cancel/extend actions.
+
+#### Forcing a Refresh
+
+The REST sensors update every 5 minutes. To force an immediate refresh:
+
+```yaml
+service: homeassistant.update_entity
+target:
+  entity_id:
+    - sensor.2park_balance
+    - sensor.2park_bookings_count
+```
+
+### Automations
+
+Copy these automations via **Settings → Automations → Create Automation → Edit as YAML**. Update the license plates and persons to match your household.
+
+#### Book on Arrival (Ida)
+
+Triggers when Ida arrives home, books parking for `51-PX-PN` for 120 minutes, and sends a push notification to her phone. This replaces the old separate "Ida waarschuwing" automation.
 
 ```yaml
 alias: "Parking - Auto Book on Arrival"
 trigger:
   - platform: state
-    entity_id:
-      - person.mark
-      - person.janneke
+    entity_id: person.ida
     from: "not_home"
     to: "home"
 condition:
-  - condition: numeric_state
-    entity_id: sensor.2park_balance
-    above: 5.0
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.2park_low_balance
+        state: "on"
 action:
-  - variables:
-      plates:
-        person.mark: "51PXPN"
-        person.janneke: "AB-12-CD"
-      durations:
-        person.mark: 120
-        person.janneke: 60
-  - service: rest_command.2park_create_booking
+  - service: rest_command.create_twopark_booking
     data:
-      license_plate: "{{ plates[trigger.entity_id] }}"
-      duration_minutes: "{{ durations[trigger.entity_id] }}"
-    response_variable: result
+      license_plate: "51PXPN"
+      duration_minutes: 120
   - service: notify.notify
     data:
       title: "Parking Booked"
-      message: >
-        Parking booked for {{ trigger.to_state.name }}
-        ({{ plates[trigger.entity_id] }}) for {{ durations[trigger.entity_id] }} minutes.
+      message: "Parking booked for Ida (51PXPN) for 120 minutes."
+  - service: notify.mobile_app_2201123g
+    data:
+      message: "Parking booked for 51-PX-PN! Check de parkeerapp."
 mode: single
 ```
 
-### Automation: Cancel on Departure
+To adapt this for another person, change the `entity_id` under `trigger`, update the license plate and duration, and replace the mobile notify service with the correct device.
+
+#### Cancel on Departure
+
+Triggers when a household member leaves home, canceling their active booking.
 
 ```yaml
 alias: "Parking - Cancel on Departure"
@@ -379,24 +384,26 @@ trigger:
   - platform: state
     entity_id:
       - person.mark
-      - person.janneke
+      - person.ida
     from: "home"
     to: "not_home"
 action:
   - variables:
       plates:
         person.mark: "51PXPN"
-        person.janneke: "AB-12-CD"
-  - service: rest_command.2park_cancel_booking
+        person.ida: "51PXPN"
+  - service: rest_command.cancel_twopark_booking
     data:
       license_plate: "{{ plates[trigger.entity_id] }}"
 mode: single
 ```
 
-### Automation: Low Balance Alert
+#### Low Balance Alert
+
+Sends a notification when the parking balance drops below €5.00.
 
 ```yaml
-alias: "Parking - Low Balance Alert"
+alias: "Parking - Alert on Low Balance"
 trigger:
   - platform: state
     entity_id: binary_sensor.2park_low_balance
@@ -411,23 +418,6 @@ action:
 mode: single
 ```
 
-### Dashboard Card
-
-```yaml
-type: entities
-title: 2Park Parking
-entities:
-  - entity: sensor.2park_balance
-    name: Balance
-    icon: mdi:cash
-  - entity: sensor.2park_active_bookings
-    name: Active Bookings
-    icon: mdi:car
-  - entity: binary_sensor.2park_low_balance
-    name: Low Balance
-    icon: mdi:alert-circle
-```
-
 ### Home Assistant Troubleshooting
 
 | Issue | Solution |
@@ -437,6 +427,8 @@ entities:
 | `LOGIN_FAILED` errors | Check 2Park credentials. The site may be temporarily down. |
 | Stale balance data | Lower `scan_interval` or call `homeassistant.update_entity` |
 | Rate limit exceeded | Wait for `X-RateLimit-Reset` seconds, or increase `RATE_LIMIT_REQUESTS` |
+| Sensor shows `unavailable` | Increase `timeout: 30` to `timeout: 60` in `sensors.yaml` — the browser can take 15-30s |
+| `binary_sensor.2park_low_balance` not found | Ensure `template: !include template.yaml` is in `configuration.yaml` and restart HA |
 
 ## CLI Usage
 

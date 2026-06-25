@@ -37,12 +37,29 @@
 # Dashboard → Edit → Three dots → Edit as YAML
 # Paste the card from native-cards-improved.yaml
 #
+# The card is dynamic — it shows cancel/extend buttons for
+# each active booking automatically. No hardcoded plates.
+#
 # ============================================================
 # ENTITY IDs
 # ============================================================
 #
-# sensor.2park_balance          — Account balance in EUR
-# sensor.2park_bookings_count   — Active booking count
-# sensor.2park_summary          — Formatted summary text
+# sensor.2park_balance              — Account balance in EUR
+# sensor.2park_bookings_count       — Active booking count
+# sensor.2park_bookings_dynamic     — Dynamic booking attributes
+# sensor.2park_summary              — Formatted summary text
+#
+# ============================================================
+# FORCING A REFRESH
+# ============================================================
+#
+# The REST sensors poll the API every 5 minutes. To force
+# an immediate update:
+#
+#   Service: homeassistant.update_entity
+#   Target:
+#     entity_id:
+#       - sensor.2park_balance
+#       - sensor.2park_bookings_count
 #
 # ============================================================

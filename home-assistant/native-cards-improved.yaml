@@ -5,17 +5,45 @@
 # This uses ONLY built-in Home Assistant cards.
 # No HACS or custom cards required.
 #
-# To use:
+# This card is DYNAMIC: it reads active bookings from the
+# sensor.2park_bookings_dynamic sensor attributes and shows
+# cancel/extend buttons only for bookings that actually exist.
+#
+# Prerequisites:
+#   - sensors.yaml      (REST sensors for balance & bookings)
+#   - template.yaml     (template sensors, including the
+#                        "2Park Bookings Dynamic" sensor)
+#   - rest_commands.yaml (cancel & extend REST commands)
+#
+# How to use:
 #   1. In your HA dashboard → Edit → Three dots → Edit as YAML
 #   2. Replace the card content with the YAML below
-#   3. Duplicate the "BOOKING" sections for additional bookings
-#   4. Replace "51PXPN" with your actual license plate(s)
+#   3. No need to edit for individual bookings — it works
+#      automatically based on the current bookings from the API.
 #
+# How it works:
+#   The template sensor "sensor.2park_bookings_dynamic" parses
+#   the bookings JSON array from the API and exposes each
+#   booking's license_plate, start_time, end_time, and status
+#   as individual attributes (booking_1_plate, etc.).
+#
+#   Each booking row in this card uses HA's "state" condition
+#   to only show when the corresponding booking attribute is
+#   non-empty. The cancel/extend buttons use Jinja2 templates
+#   to read the plate from the sensor attributes.
+#
+# Limitations:
+#   - Supports up to 5 concurrent bookings (rows 1-5).
+#     If you regularly have more, duplicate row patterns
+#     and extend the template sensor.
+#   - The REST sensors update every 5 minutes (configurable
+#     in sensors.yaml). New bookings appear after the next
+#     scan. Use "homeassistant.update_entity" to force refresh.
 # ============================================================
 
 type: vertical-stack
 cards:
-  # ── ROW 1: Balance + Booking Count ───────────────────────
+  # ── HEADER: Balance + Booking Count ───────────────────────
   - type: horizontal-stack
     cards:
       - type: entities
@@ -33,57 +61,221 @@ cards:
             name: " "
             icon: mdi:parking
 
-  # ── ROW 2: Booking 51PXPN ────────────────────────────────
-  - type: horizontal-stack
-    cards:
-      - type: button
-        name: "51PXPN"
-        icon: mdi:car
-        tap_action:
-          action: call-service
-          service: rest_command.cancel_twopark_booking
-          data:
-            license_plate: "51PXPN"
-        confirmation:
-          text: "Cancel booking for 51PXPN?"
-      - type: button
-        name: "+60m"
-        icon: mdi:arrow-up-bold
-        tap_action:
-          action: call-service
-          service: rest_command.extend_twopark_booking
-          data:
-            license_plate: "51PXPN"
-            additional_minutes: 60
-        confirmation:
-          text: "Extend 51PXPN by 60 minutes?"
+  # ── BOOKING TABLE ─────────────────────────────────────────
+  # Each row conditionally appears only when that booking slot
+  # has a license plate (non-empty). Rows are hidden when empty.
+  # Supports up to 5 concurrent bookings.
 
-# ============================================================
-# TO ADD MORE BOOKINGS:
-# Add another horizontal-stack block. Example for "AB-12-CD":
-#
-#   - type: horizontal-stack
-#     cards:
-#       - type: button
-#         name: "AB-12-CD"
-#         icon: mdi:car
-#         tap_action:
-#           action: call-service
-#           service: rest_command.cancel_twopark_booking
-#           data:
-#             license_plate: "AB-12-CD"
-#         confirmation:
-#           text: "Cancel booking for AB-12-CD?"
-#
-#       - type: button
-#         name: "+60m"
-#         icon: mdi:arrow-up-bold
-#         tap_action:
-#           action: call-service
-#           service: rest_command.extend_twopark_booking
-#           data:
-#             license_plate: "AB-12-CD"
-#             additional_minutes: 60
-#         confirmation:
-#           text: "Extend AB-12-CD by 60 minutes?"
-# ============================================================
+  # ── BOOKING 1 ─────────────────────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_dynamic
+        attribute: booking_1_plate
+        state_not: ""
+    card:
+      type: horizontal-stack
+      cards:
+        - type: entities
+          title: "Booking 1"
+          show_header_toggle: false
+          entities:
+            - entity: sensor.2park_bookings_dynamic
+              name: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}"
+              icon: mdi:car
+              secondary_info: >
+                Until {{ as_timestamp(state_attr('sensor.2park_bookings_dynamic', 'booking_1_end')) | timestamp_custom('%H:%M', true) }}
+        - type: button
+          name: Cancel
+          icon: mdi:cancel
+          tap_action:
+            action: call-service
+            service: rest_command.cancel_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}"
+            confirmation:
+              text: "Cancel booking for {{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}?"
+        - type: button
+          name: +60m
+          icon: mdi:arrow-up-bold
+          tap_action:
+            action: call-service
+            service: rest_command.extend_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}"
+              additional_minutes: 60
+            confirmation:
+              text: "Extend {{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }} by 60 minutes?"
+
+  # ── BOOKING 2 ─────────────────────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_dynamic
+        attribute: booking_2_plate
+        state_not: ""
+    card:
+      type: horizontal-stack
+      cards:
+        - type: entities
+          title: "Booking 2"
+          show_header_toggle: false
+          entities:
+            - entity: sensor.2park_bookings_dynamic
+              name: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_2_plate') }}"
+              icon: mdi:car
+              secondary_info: >
+                Until {{ as_timestamp(state_attr('sensor.2park_bookings_dynamic', 'booking_2_end')) | timestamp_custom('%H:%M', true) }}
+        - type: button
+          name: Cancel
+          icon: mdi:cancel
+          tap_action:
+            action: call-service
+            service: rest_command.cancel_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_2_plate') }}"
+            confirmation:
+              text: "Cancel booking for {{ state_attr('sensor.2park_bookings_dynamic', 'booking_2_plate') }}?"
+        - type: button
+          name: +60m
+          icon: mdi:arrow-up-bold
+          tap_action:
+            action: call-service
+            service: rest_command.extend_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_2_plate') }}"
+              additional_minutes: 60
+            confirmation:
+              text: "Extend {{ state_attr('sensor.2park_bookings_dynamic', 'booking_2_plate') }} by 60 minutes?"
+
+  # ── BOOKING 3 ─────────────────────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_dynamic
+        attribute: booking_3_plate
+        state_not: ""
+    card:
+      type: horizontal-stack
+      cards:
+        - type: entities
+          title: "Booking 3"
+          show_header_toggle: false
+          entities:
+            - entity: sensor.2park_bookings_dynamic
+              name: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_3_plate') }}"
+              icon: mdi:car
+              secondary_info: >
+                Until {{ as_timestamp(state_attr('sensor.2park_bookings_dynamic', 'booking_3_end')) | timestamp_custom('%H:%M', true) }}
+        - type: button
+          name: Cancel
+          icon: mdi:cancel
+          tap_action:
+            action: call-service
+            service: rest_command.cancel_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_3_plate') }}"
+            confirmation:
+              text: "Cancel booking for {{ state_attr('sensor.2park_bookings_dynamic', 'booking_3_plate') }}?"
+        - type: button
+          name: +60m
+          icon: mdi:arrow-up-bold
+          tap_action:
+            action: call-service
+            service: rest_command.extend_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_3_plate') }}"
+              additional_minutes: 60
+            confirmation:
+              text: "Extend {{ state_attr('sensor.2park_bookings_dynamic', 'booking_3_plate') }} by 60 minutes?"
+
+  # ── BOOKING 4 ─────────────────────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_dynamic
+        attribute: booking_4_plate
+        state_not: ""
+    card:
+      type: horizontal-stack
+      cards:
+        - type: entities
+          title: "Booking 4"
+          show_header_toggle: false
+          entities:
+            - entity: sensor.2park_bookings_dynamic
+              name: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_4_plate') }}"
+              icon: mdi:car
+              secondary_info: >
+                Until {{ as_timestamp(state_attr('sensor.2park_bookings_dynamic', 'booking_4_end')) | timestamp_custom('%H:%M', true) }}
+        - type: button
+          name: Cancel
+          icon: mdi:cancel
+          tap_action:
+            action: call-service
+            service: rest_command.cancel_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_4_plate') }}"
+            confirmation:
+              text: "Cancel booking for {{ state_attr('sensor.2park_bookings_dynamic', 'booking_4_plate') }}?"
+        - type: button
+          name: +60m
+          icon: mdi:arrow-up-bold
+          tap_action:
+            action: call-service
+            service: rest_command.extend_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_4_plate') }}"
+              additional_minutes: 60
+            confirmation:
+              text: "Extend {{ state_attr('sensor.2park_bookings_dynamic', 'booking_4_plate') }} by 60 minutes?"
+
+  # ── BOOKING 5 ─────────────────────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_dynamic
+        attribute: booking_5_plate
+        state_not: ""
+    card:
+      type: horizontal-stack
+      cards:
+        - type: entities
+          title: "Booking 5"
+          show_header_toggle: false
+          entities:
+            - entity: sensor.2park_bookings_dynamic
+              name: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_5_plate') }}"
+              icon: mdi:car
+              secondary_info: >
+                Until {{ as_timestamp(state_attr('sensor.2park_bookings_dynamic', 'booking_5_end')) | timestamp_custom('%H:%M', true) }}
+        - type: button
+          name: Cancel
+          icon: mdi:cancel
+          tap_action:
+            action: call-service
+            service: rest_command.cancel_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_5_plate') }}"
+            confirmation:
+              text: "Cancel booking for {{ state_attr('sensor.2park_bookings_dynamic', 'booking_5_plate') }}?"
+        - type: button
+          name: +60m
+          icon: mdi:arrow-up-bold
+          tap_action:
+            action: call-service
+            service: rest_command.extend_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_5_plate') }}"
+              additional_minutes: 60
+            confirmation:
+              text: "Extend {{ state_attr('sensor.2park_bookings_dynamic', 'booking_5_plate') }} by 60 minutes?"
+
+  # ── NO BOOKINGS PLACEHOLDER ───────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_count
+        state: "0"
+    card:
+      type: markdown
+      title: "No Active Bookings"
+      content: >
+        **No active parking sessions.** Bookings made via the API
+        or the 2Park website will appear here automatically.
+
+        **Current Balance:** €{{ states('sensor.2park_balance') }}

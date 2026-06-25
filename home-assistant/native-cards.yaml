@@ -5,13 +5,17 @@
 # This version uses ONLY built-in Home Assistant cards.
 # No HACS or custom cards required.
 #
-# Add to your dashboard via UI:
-#   1. Add card → "Entities"
-#   2. Select the 2Park sensors
-#   3. Add "Button" cards for cancel/extend actions
+# ⚠️ RECOMMENDED: Use native-cards-improved.yaml instead.
+#   That version is DYNAMIC — it reads active bookings from the
+#   sensor.2park_bookings_dynamic sensor attributes and shows
+#   cancel/extend buttons for each booking automatically,
+#   without hardcoding license plates.
+#
+#   This file is kept as a fallback reference for the simpler
+#   static card layout (no action buttons).
 #
 # ============================================================
-# ENTITY CARD — Shows balance and booking count
+# SIMPLE ENTITY CARD — Shows balance and booking count
 # ============================================================
 #
 # type: entities
@@ -23,11 +27,13 @@
 #   - sensor.2park_summary
 #
 # ============================================================
-# BUTTON CARDS — Cancel & Extend actions
+# STATIC BUTTON CARDS — Cancel & Extend (hardcoded plates)
 # ============================================================
 #
 # Add these as separate "Button" cards in your dashboard.
 # You'll need one set per booking (manually add each).
+# These use hardcoded plates — for dynamic plates, use the
+# improved version instead.
 #
 # CANCEL BUTTON EXAMPLE:
 # type: button
@@ -38,8 +44,8 @@
 #   service: rest_command.cancel_twopark_booking
 #   data:
 #     license_plate: "51PXPN"
-# confirmation:
-#   text: Cancel booking for 51PXPN?
+#   confirmation:
+#     text: Cancel booking for 51PXPN?
 #
 # EXTEND BUTTON EXAMPLE:
 # type: button
@@ -51,12 +57,15 @@
 #   data:
 #     license_plate: "51PXPN"
 #     additional_minutes: 60
-# confirmation:
-#   text: Extend 51PXPN by 60 minutes?
+#   confirmation:
+#     text: Extend 51PXPN by 60 minutes?
 #
 # ============================================================
 # COMPLETE NATIVE DASHBOARD (copy into YAML mode)
 # ============================================================
+#
+# This is a simplified version with balance + booking count
+# only. For action buttons, use native-cards-improved.yaml.
 
 type: vertical-stack
 cards:
@@ -81,49 +90,16 @@ cards:
         name: Active Bookings
         icon: mdi:parking
 
-  # Cancel buttons — one per booking
-  - type: horizontal-stack
-    cards:
-      - type: button
-        name: "Cancel 51PXPN"
-        icon: mdi:cancel
-        tap_action:
-          action: call-service
-          service: rest_command.cancel_twopark_booking
-          data:
-            license_plate: "51PXPN"
-        confirmation:
-          text: "Cancel booking for 51PXPN?"
-
-  # Extend buttons — one per booking
-  - type: horizontal-stack
-    cards:
-      - type: button
-        name: "Extend 51PXPN +60m"
-        icon: mdi:arrow-up-bold
-        tap_action:
-          action: call-service
-          service: rest_command.extend_twopark_booking
-          data:
-            license_plate: "51PXPN"
-            additional_minutes: 60
-        confirmation:
-          text: "Extend 51PXPN by 60 minutes?"
-
 # ============================================================
 # NOTES
 # ============================================================
 #
-# - Replace "51PXPN" with your actual license plate(s)
-# - Add more button cards for additional bookings
-# - The balance and booking count update automatically via REST sensors
-# - Cancel/Extend require manual button presses (no auto-detection of plates)
-#
-# For a fully dynamic setup (auto-detecting booking plates),
-# use the button-card custom card version (see lovelace-card.yaml)
+# For a fully dynamic setup (auto-detecting booking plates
+# with cancel/extend buttons), use native-cards-improved.yaml
 #
 # ENTITY IDs:
-#   sensor.2park_balance          — Current balance in EUR
-#   sensor.2park_bookings_count   — Number of active bookings
-#   sensor.2park_summary          — Formatted summary text
+#   sensor.2park_balance              — Current balance in EUR
+#   sensor.2park_bookings_count       — Number of active bookings
+#   sensor.2park_bookings_dynamic     — Dynamic booking attributes
+#   sensor.2park_summary              — Formatted summary text
 # ============================================================
