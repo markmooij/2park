@@ -2,15 +2,14 @@
 2Park Reservation Checker CLI
 Automates checking active reservations and balance on 2park.nl
 
-This CLI tool uses the TwoParkScraper for browser automation.
+This CLI tool uses the TwoParkClient for direct HTTP API access.
 """
 
-import asyncio
 import logging
 import os
 import sys
 
-from scraper import TwoParkScraper
+from api_client import TwoParkClient
 
 # Configure logging
 logging.basicConfig(
@@ -19,14 +18,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def run_checker(email: str, password: str):
-    """Run the parking checker using TwoParkScraper"""
-    async with TwoParkScraper(email, password) as scraper:
+def run_checker(email: str, password: str):
+    """Run the parking checker using TwoParkClient"""
+    with TwoParkClient(email, password) as client:
         # Get active reservations
-        reservations = await scraper.get_active_reservations()
+        reservations = client.get_active_reservations()
 
         # Get current balance
-        balance = await scraper.get_balance()
+        balance = client.get_balance()
 
         # Print results
         print("\n" + "=" * 50)
@@ -52,7 +51,7 @@ async def run_checker(email: str, password: str):
         print("=" * 50 + "\n")
 
 
-async def main():
+def main():
     """Main entry point"""
     # Get credentials from environment variables
     email = os.getenv("TWOPARK_EMAIL")
@@ -69,7 +68,7 @@ async def main():
         sys.exit(1)
 
     try:
-        await run_checker(email, password)
+        run_checker(email, password)
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
         sys.exit(0)
@@ -80,7 +79,7 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         logger.info("Program terminated by user")
         sys.exit(0)

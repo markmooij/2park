@@ -16,7 +16,6 @@ docker compose up -d
 
 # Test
 curl http://localhost:8090/health
-curl http://localhost:8090/health/scraper
 curl -H "Authorization: Bearer YOUR_API_TOKEN" http://localhost:8090/api/account/balance
 ```
 
@@ -24,7 +23,6 @@ curl -H "Authorization: Bearer YOUR_API_TOKEN" http://localhost:8090/api/account
 
 ```bash
 uv sync
-uv run playwright install chromium
 cp .env.example .env
 nano .env
 python api.py
@@ -37,7 +35,7 @@ All endpoints except `/health` and `/health/scraper` require a Bearer token in t
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Health check (no auth) |
-| `/health/scraper` | GET | Scraper selector health check (no auth) |
+| `/health/scraper` | GET | 2Park API connectivity health check (no auth) |
 | `/api/account/balance` | GET | Get current account balance |
 | `/api/bookings` | GET | List all active bookings |
 | `/api/bookings` | POST | Create a new booking |
@@ -61,7 +59,7 @@ Normalization is idempotent — sending a normalized plate back as input produce
 
 All examples use port `8090` (default for both Docker and local). Replace `YOUR_API_TOKEN` with your actual token.
 
-### Scraper Health Check
+### API Health Check
 
 ```bash
 curl http://localhost:8090/health/scraper
@@ -70,23 +68,14 @@ curl http://localhost:8090/health/scraper
 ```json
 {
   "status": "ok",
-  "selectors_checked": [
-    {"selector": ".tabs-container", "label": "Tab container", "present": true},
-    {"selector": ".tabText", "label": "Tab text element", "present": true},
-    {"selector": ".parkapp-item", "label": "Booking card item", "present": true},
-    {"selector": ".license-plate.active", "label": "License plate display", "present": true},
-    {"selector": ".extend-context-menu-button", "label": "Extend button", "present": true},
-    {"selector": ".stop-context-menu-button", "label": "Stop/Cancel button", "present": true},
-    {"selector": ".time-container", "label": "Time display container", "present": true},
-    {"selector": ".parking-action-balance", "label": "Balance display", "present": true}
-  ],
-  "missing_selectors": [],
+  "login_ok": true,
+  "product_id": "12345",
   "timestamp": "2026-03-31T13:27:13.889549Z",
-  "total_response_time_ms": 12500.3
+  "total_response_time_ms": 850.3
 }
 ```
 
-When `"status"` is `"degraded"`, some selectors are missing from the dashboard — the scraper may produce incorrect results. When `"status"` is `"error"`, the scraper could not reach the 2Park website at all.
+When `"status"` is `"degraded"`, the API is reachable but login failed (check credentials). When `"status"` is `"error"`, the 2Park API could not be reached at all.
 
 ### Get Account Balance
 
@@ -202,8 +191,7 @@ All errors use a consistent JSON format:
 | `BOOKING_NOT_FOUND` | 404 | No active booking for the given plate |
 | `BOOKING_CONFLICT` | 409 | Active booking already exists for this plate |
 | `RATE_LIMIT_EXCEEDED` | 429 | Too many requests (check `X-RateLimit-Reset` header) |
-| `TIMEOUT_ERROR` | 504 | Browser operation timed out |
-| `BROWSER_ERROR` | 500 | Browser automation failure |
+| `TIMEOUT_ERROR` | 504 | API request timed out |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 ### Rate Limit Headers
@@ -235,9 +223,7 @@ X-RateLimit-Reset: 45
 | `PORT` | `8090` | API server port |
 | `RATE_LIMIT_REQUESTS` | `10` | Max requests per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window (seconds) |
-| `BROWSER_TIMEOUT` | `30` | Browser launch timeout (10-300s) |
-| `NAVIGATION_TIMEOUT` | `30` | Page navigation timeout (10-300s) |
-| `SELECTOR_TIMEOUT` | `10` | Element selector timeout (10-300s) |
+
 | `LOG_LEVEL` | `INFO` | Logging level |
 
 ## Docker
@@ -307,8 +293,87 @@ No hardcoded license plates required — the card adapts automatically based on 
 #### Adding the Card to Your Dashboard
 
 1. Go to your dashboard → Edit → Three dots → **Edit as YAML**
-2. Paste the content from `home-assistant/native-cards-improved.yaml`
+2. Paste the card YAML from `home-assistant/native-cards-improved.yaml` (or copy from below)
 3. Save
+
+#### Full Card YAML (for copy-paste)
+
+```yaml
+type: vertical-stack
+cards:
+  # ── HEADER: Balance + Booking Count ───────────────────────
+  - type: horizontal-stack
+    cards:
+      - type: entities
+        title: "€{{ states('sensor.2park_balance') }}"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.2park_balance
+            name: Balance
+            icon: mdi:cash
+      - type: entities
+        title: "{{ states('sensor.2park_bookings_count') | int(0) }} active"
+        show_header_toggle: false
+        entities:
+          - entity: sensor.2park_bookings_count
+            name: Bookings
+            icon: mdi:parking
+
+  # ── BOOKING 1 ─────────────────────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_dynamic
+        attribute: booking_1_plate
+        state_not: ""
+    card:
+      type: horizontal-stack
+      cards:
+        - type: entity
+          entity: sensor.2park_bookings_dynamic
+          name: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}"
+          icon: mdi:car
+          secondary_info: "Until {{ as_timestamp(state_attr('sensor.2park_bookings_dynamic', 'booking_1_end')) | timestamp_custom('%H:%M', true) }}"
+        - type: button
+          name: Cancel
+          icon: mdi:cancel
+          tap_action:
+            action: call-service
+            service: rest_command.cancel_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}"
+            confirmation:
+              text: "Cancel {{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}?"
+        - type: button
+          name: +60m
+          icon: mdi:arrow-up-bold
+          tap_action:
+            action: call-service
+            service: rest_command.extend_twopark_booking
+            data:
+              license_plate: "{{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }}"
+              additional_minutes: 60
+            confirmation:
+              text: "Extend {{ state_attr('sensor.2park_bookings_dynamic', 'booking_1_plate') }} by 60 min?"
+
+  # ── NO BOOKINGS PLACEHOLDER ───────────────────────────────
+  - type: conditional
+    conditions:
+      - entity: sensor.2park_bookings_count
+        state: "0"
+    card:
+      type: markdown
+      title: "No Active Bookings"
+      content: >
+        **No active parking sessions.** Bookings made via the API
+        or the 2Park website will appear here automatically.
+
+        **Current Balance:** €{{ states('sensor.2park_balance') }}
+```
+
+**Note:** Only one booking row is shown above to keep this example concise.
+Duplicate the conditional block for `booking_2` through `booking_5` to support
+up to 5 concurrent bookings. The `home-assistant/native-cards-improved.yaml`
+file contains the full card with all 5 rows pre-written.
 
 #### How It Works
 
@@ -422,13 +487,16 @@ mode: single
 
 | Issue | Solution |
 |-------|----------|
-| Timeout errors | Set `timeout: 120` on all rest_commands. Browser operations take 5-15s. |
-| Connection refused | Ensure API container is running and reachable from HA network |
+| Timeout errors | Set `timeout: 30` on all rest_commands and `timeout: 15` on sensors. API operations typically take <1s. |
+| Balance stuck at 0 / `Empty reply` in logs | The hostname `rasp-pi-4-service.local` may not resolve from HA. Replace with the server's IP address in `sensors.yaml` and `rest_commands.yaml`, e.g. `http://192.168.1.100:8090`. |
+| Connection refused | Ensure API container is running and reachable from HA network. Run `docker ps` on the server to confirm. |
 | `LOGIN_FAILED` errors | Check 2Park credentials. The site may be temporarily down. |
 | Stale balance data | Lower `scan_interval` or call `homeassistant.update_entity` |
 | Rate limit exceeded | Wait for `X-RateLimit-Reset` seconds, or increase `RATE_LIMIT_REQUESTS` |
-| Sensor shows `unavailable` | Increase `timeout: 30` to `timeout: 60` in `sensors.yaml` — the browser can take 15-30s |
+| Sensor shows `unavailable` | Increase `timeout: 15` to `timeout: 30` in `sensors.yaml` |
+| Template errors (`NoneType has no len()`) | The `bookings` attribute is `None` because the REST sensor can't reach the API. Fix the connection issue first (see above). |
 | `binary_sensor.2park_low_balance` not found | Ensure `template: !include template.yaml` is in `configuration.yaml` and restart HA |
+| `rest_command.*` not found | Ensure `rest_command: !include rest_commands.yaml` is in `configuration.yaml` and restart HA |
 
 ## CLI Usage
 
@@ -464,7 +532,7 @@ EUR 25.50
 
 ```
 api.py              # FastAPI REST API server
-scraper.py          # Stateless Playwright browser automation
+api_client.py       # Direct HTTP client for 2Park JSON API
 models.py           # Pydantic request/response models
 errors.py           # Error codes and exception handling
 auth.py             # Bearer token authentication
@@ -475,7 +543,7 @@ Dockerfile          # Container image
 docker-compose.yml  # Docker Compose configuration
 ```
 
-Each API request independently: authenticates the token, launches a headless browser, logs in to 2Park, performs the operation, and cleans up. This stateless design avoids session leaks and enables horizontal scaling.
+Each API request independently: authenticates the token, logs in to the 2Park JSON API via HTTP, performs the operation, and returns the result. No browser is required — the client communicates directly with the 2Park backend API.
 
 ## Testing
 
@@ -503,11 +571,11 @@ python test_api.py
 - Never commit `.env` (already in `.gitignore`)
 - Generate a strong API token: `openssl rand -hex 32`
 - Don't expose the API directly to the internet without HTTPS
-- Credentials are only transmitted to 2park.nl via the browser session
+- Credentials are only transmitted to 2park.nl via HTTPS
 
 ## Disclaimer
 
-This is a personal hobby project. It automates interaction with 2park.nl using browser automation. Use at your own risk and in accordance with 2park.nl's Terms of Service. The author is not affiliated with 2park.nl.
+This is a personal hobby project. It automates interaction with 2park.nl using its internal JSON API. Use at your own risk and in accordance with 2park.nl's Terms of Service. The author is not affiliated with 2park.nl.
 
 ## Documentation
 

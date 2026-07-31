@@ -40,7 +40,7 @@ from models import (
     normalize_license_plate,
 )
 from rate_limit import check_rate_limit, rate_limiter
-from scraper import TwoParkScraper
+from api_client import TwoParkClient, _parse_api_datetime
 
 # Configure logging
 logging.basicConfig(
@@ -193,45 +193,35 @@ async def health_check():
 
 
 @app.get("/health/scraper")
-async def scraper_health_check():
+def scraper_health_check():
     """
-    Scraper selector health check endpoint.
+    2Park API health check endpoint.
 
-    Verifies that the critical DOM selectors used by the scraper
-    are still present on the 2Park dashboard. Returns "ok" if all
-    selectors are found, "degraded" if some are missing.
+    Verifies that the 2Park JSON API is reachable and credentials
+    are valid by performing a lightweight login + version check.
 
     Does not require authentication — designed for monitoring systems.
     """
     import time
     start = time.monotonic()
 
-    logger.info("Scraper health check requested")
+    logger.info("2Park API health check requested")
 
     email, password = get_credentials()
 
     try:
-        async with TwoParkScraper(email, password) as scraper:
-            result = await scraper.scraper_health_check()
+        with TwoParkClient(email, password) as client:
+            result = client.health_check()
 
         elapsed_ms = round((time.monotonic() - start) * 1000, 1)
         result["total_response_time_ms"] = elapsed_ms
 
-        logger.info(f"Scraper health check completed: {result['status']}")
+        logger.info(f"2Park API health check completed: {result['status']}")
         return result
 
-    except TimeoutException:
+    except (ScrapeErrorException, LoginFailedException) as e:
         elapsed_ms = round((time.monotonic() - start) * 1000, 1)
-        return {
-            "status": "error",
-            "error": "Timeout",
-            "message": "Health check timed out — 2Park website may be slow or unreachable",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "total_response_time_ms": elapsed_ms,
-        }
-    except (ScrapeErrorException, BrowserException, LoginFailedException) as e:
-        elapsed_ms = round((time.monotonic() - start) * 1000, 1)
-        logger.error(f"Scraper health check failed: {e}")
+        logger.error(f"2Park API health check failed: {e}")
         return {
             "status": "error",
             "error": type(e).__name__,
@@ -241,7 +231,7 @@ async def scraper_health_check():
         }
     except Exception as e:
         elapsed_ms = round((time.monotonic() - start) * 1000, 1)
-        logger.error(f"Scraper health check unexpected error: {e}", exc_info=True)
+        logger.error(f"2Park API health check unexpected error: {e}", exc_info=True)
         return {
             "status": "error",
             "error": "UnexpectedError",
@@ -261,7 +251,7 @@ async def scraper_health_check():
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
-async def get_balance(
+def get_balance(
     request: Request,
     authorized: Annotated[bool, Depends(verify_token)],
     _: Annotated[bool, Depends(check_rate_limit)],
@@ -278,8 +268,8 @@ async def get_balance(
 
     email, password = get_credentials()
 
-    async with TwoParkScraper(email, password) as scraper:
-        balance = await scraper.get_balance()
+    with TwoParkClient(email, password) as client:
+        balance = client.get_balance()
         return BalanceResponse(
             balance=balance,
             currency="EUR",
@@ -297,7 +287,7 @@ async def get_balance(
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
-async def list_bookings(
+def list_bookings(
     request: Request,
     authorized: Annotated[bool, Depends(verify_token)],
     _: Annotated[bool, Depends(check_rate_limit)],
@@ -316,40 +306,16 @@ async def list_bookings(
 
     email, password = get_credentials()
 
-    async with TwoParkScraper(email, password) as scraper:
-        reservations = await scraper.get_active_reservations()
+    with TwoParkClient(email, password) as client:
+        reservations = client.get_active_reservations()
 
         bookings = []
         for res in reservations:
             # Parse start time - handle empty strings and invalid formats
-            if res.start_time:
-                try:
-                    start_dt = datetime.fromisoformat(res.start_time.replace("Z", "+00:00"))
-                except ValueError:
-                    start_dt = datetime.now(timezone.utc)
-            else:
-                start_dt = datetime.now(timezone.utc)
+            start_dt = _parse_api_datetime(res.start_time) or datetime.now(timezone.utc)
 
             # Parse end time - handle empty strings and invalid formats
-            if res.end_time:
-                try:
-                    end_dt = datetime.fromisoformat(res.end_time.replace("Z", "+00:00"))
-                except ValueError:
-                    end_dt = datetime.now(timezone.utc)
-
-                # The 2Park website displays "23:59" as a placeholder end-of-day
-                # time in its reservation list, regardless of the actual booking
-                # end time.  If the scraped end time is 23:59 (hour==23 and
-                # minute==59), treat it as unreliable and fall back to the
-                # start time so the client gets a sensible value.
-                if end_dt.hour == 23 and end_dt.minute == 59:
-                    logger_with_id.warning(
-                        f"Scraped end_time is 23:59 (website placeholder) for "
-                        f"{res.license_plate}; using start_time as fallback"
-                    )
-                    end_dt = start_dt
-            else:
-                end_dt = start_dt
+            end_dt = _parse_api_datetime(res.end_time) or start_dt
 
             bookings.append(
                 BookingResponse(
@@ -376,7 +342,7 @@ async def list_bookings(
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
-async def create_booking(
+def create_booking(
     request: CreateBookingRequest,
     request_obj: Request,
     authorized: Annotated[bool, Depends(verify_token)],
@@ -420,8 +386,8 @@ async def create_booking(
 
     email, password = get_credentials()
 
-    async with TwoParkScraper(email, password) as scraper:
-        result = await scraper.create_booking(
+    with TwoParkClient(email, password) as client:
+        result = client.create_booking(
             license_plate=request.license_plate,
             start_time=start_time,
             end_time=end_time,
@@ -433,7 +399,7 @@ async def create_booking(
             try:
                 diff_min = abs((actual_end - end_time).total_seconds()) / 60
                 logger_with_id.info(
-                    f"End time adjusted by scraper: calculated={end_time.isoformat()}",
+                    f"End time adjusted by client: calculated={end_time.isoformat()}",
                     f" actual={actual_end.isoformat()}",
                     f" difference={diff_min:.1f} min",
                 )
@@ -463,7 +429,7 @@ async def create_booking(
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
-async def extend_booking(
+def extend_booking(
     license_plate: str,
     request: ExtendBookingRequest,
     request_obj: Request,
@@ -490,8 +456,8 @@ async def extend_booking(
 
     email, password = get_credentials()
 
-    async with TwoParkScraper(email, password) as scraper:
-        result = await scraper.extend_booking(
+    with TwoParkClient(email, password) as client:
+        result = client.extend_booking(
             license_plate=license_plate,
             additional_minutes=request.additional_minutes,
         )
@@ -513,7 +479,7 @@ async def extend_booking(
         500: {"model": ErrorResponse, "description": "Server error"},
     },
 )
-async def cancel_booking(
+def cancel_booking(
     license_plate: str,
     request_obj: Request,
     authorized: Annotated[bool, Depends(verify_token)],
@@ -536,8 +502,8 @@ async def cancel_booking(
 
     email, password = get_credentials()
 
-    async with TwoParkScraper(email, password) as scraper:
-        result = await scraper.cancel_booking(license_plate=license_plate)
+    with TwoParkClient(email, password) as client:
+        result = client.cancel_booking(license_plate=license_plate)
 
         return CancelBookingResponse(
             status=result["status"],

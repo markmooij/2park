@@ -14,18 +14,18 @@ Successfully transformed the 2Park checker from a CLI-only tool into a full-feat
 - Comprehensive error handling
 - Automatic browser lifecycle management
 
-### 2. **Scraper Service** (`scraper.py`)
-- Stateless browser automation using Playwright
+### 2. **API Client** (`api_client.py`)
+- Direct HTTP client for the 2Park JSON API using `requests.Session`
 - Context manager support for clean resource management
 - Operations:
-  - Login authentication
-  - Get account balance
-  - Get active reservations
-  - Create new bookings
-  - Extend existing bookings
-  - Cancel bookings
-- Headless mode by default (for API)
-- Proper cleanup on success or failure
+  - Login authentication (POST `/check_credentials.json`)
+  - Get account balance (GET `/get_balance.json`)
+  - Get active reservations (GET `/get_activations.json`)
+  - Create new bookings (POST `/start_action.json`)
+  - Extend existing bookings (POST `/extend_action.json`)
+  - Cancel bookings (POST `/stop_action.json`)
+- Automatic session timeout detection and re-login
+- No browser required
 
 ### 3. **Data Models** (`models.py`)
 - Pydantic models for request validation
@@ -215,9 +215,9 @@ Each request is completely independent:
 ### Resource Management
 Using Python context managers (`async with`):
 ```python
-async with TwoParkScraper(email, password) as scraper:
-    balance = await scraper.get_balance()
-    # Browser automatically cleaned up
+with TwoParkClient(email, password) as client:
+    balance = client.get_balance()
+    # Session automatically cleaned up
 ```
 
 ### Error Flow
@@ -227,9 +227,9 @@ Request → Token Verification → Try Operation → Success Response
          401 Unauthorized      Catch Exception → Standardized Error
 ```
 
-### Browser Lifecycle
+### Session Lifecycle
 ```
-Initialize → Launch Playwright → Create Browser → Login → Operation → Cleanup
+Initialize → requests.Session → Login → Operation → Cleanup
 ```
 
 ## Key Implementation Details
@@ -240,25 +240,26 @@ Initialize → Launch Playwright → Create Browser → Login → Operation → 
 - Always return UTC timestamps
 - Use python-dateutil for parsing
 
-### 2. Selector Strategy
-Multiple selectors for robustness:
-```python
-# Try multiple possible selectors
-amount_element = await page.query_selector(".balance-container .amount")
-if not amount_element:
-    amount_element = await page.query_selector(".balance .amount")
-if not amount_element:
-    amount_element = await page.query_selector(".account-balance")
+### 2. API Response Parsing
+The 2Park JSON API returns responses in a consistent format:
+```json
+{
+  "status": {
+    "code": {"major": "OK"|"FAIL", "minor": "..."},
+    "message": "..."
+  },
+  "data": {...}
+}
 ```
 
 ### 3. Error Mapping
 ```python
 try:
     # Operation
-except PlaywrightTimeoutError:
-    raise TimeoutException("Operation timed out")
-except LoginFailedException:
-    raise  # Pass through
+except requests.Timeout:
+    raise TimeoutException("API request timed out")
+except requests.ConnectionError:
+    raise ScrapeErrorException("Could not reach 2Park API")
 except Exception as e:
     raise ScrapeErrorException(f"Unexpected: {str(e)}")
 ```
@@ -297,22 +298,19 @@ def verify_token(authorization: Optional[str] = Header(None)):
 ## Performance Characteristics
 
 ### Typical Request Times
-- **Balance check:** ~5-8 seconds
-- **Create booking:** ~8-12 seconds
-- **Extend booking:** ~7-10 seconds
-- **Cancel booking:** ~6-9 seconds
+- **Balance check:** ~300-800ms
+- **Create booking:** ~400-900ms
+- **Extend booking:** ~300-700ms
+- **Cancel booking:** ~300-700ms
 
 ### Breakdown
-- Browser launch: ~2-3 seconds
-- Login: ~3-5 seconds
-- Operation: ~1-3 seconds
-- Cleanup: <1 second
+- Login: ~200-500ms
+- Operation: ~100-300ms
+- Cleanup: <10ms
 
 ### Optimization Opportunities
 1. **Session caching** - Reuse login sessions (trade-off: state management)
-2. **Parallel browsers** - Multiple instances for concurrent requests
-3. **Connection pooling** - Keep browser warm between requests
-4. **Selective headless** - Use headless shell for better performance
+2. **Connection pooling** - Keep session warm between requests
 
 ## Testing
 
@@ -362,7 +360,7 @@ ExecStart=/opt/2park_checker/.venv/bin/uvicorn api:app --host 0.0.0.0 --port 800
 ### 3. Docker
 ```dockerfile
 FROM python:3.12-slim
-# Install deps + Playwright
+# Install deps
 # Run uvicorn
 ```
 
@@ -378,7 +376,7 @@ location /api {
 
 ```toml
 dependencies = [
-    "playwright>=1.40.0",      # Browser automation
+    "requests>=2.31.0",        # HTTP client
     "fastapi>=0.109.0",        # Web framework
     "uvicorn>=0.27.0",         # ASGI server
     "pydantic>=2.5.0",         # Data validation
@@ -390,25 +388,24 @@ dependencies = [
 
 ```
 2park_checker/
-├── api.py              # FastAPI app (289 lines)
-├── scraper.py          # Browser automation (510 lines)
-├── models.py           # Pydantic models (115 lines)
-├── errors.py           # Error handling (131 lines)
-├── auth.py             # Authentication (77 lines)
-├── main.py             # CLI (original, kept for backward compat)
-├── test_api.py         # Test suite (211 lines)
-├── API.md              # Full documentation (856 lines)
-├── README.md           # Updated main readme
-└── .env.example        # With API_TOKEN added
+├── api.py              # FastAPI app
+├── api_client.py       # Direct HTTP client for 2Park JSON API
+├── models.py           # Pydantic models
+├── errors.py           # Error handling
+├── auth.py             # Authentication
+├── main.py             # CLI
+├── API.md              # Full documentation
+├── README.md           # Main readme
+└── .env.example        # Environment config
 ```
 
 ## Notable Challenges & Solutions
 
-### Challenge 1: Website Structure Unknown
-**Solution:** Used multiple selector strategies and placeholder logic with comments noting where adjustments are needed based on actual 2park.nl structure.
+### Challenge 1: API Discovery
+**Solution:** Analyzed the 2Park frontend JavaScript to discover undocumented JSON API endpoints (`check_credentials.json`, `get_balance.json`, `get_activations.json`, `start_action.json`, `extend_action.json`, `stop_action.json`).
 
-### Challenge 2: Stateless vs Performance
-**Solution:** Chose stateless for simplicity and reliability. Can add session caching later if needed.
+### Challenge 2: Session Management
+**Solution:** Used `requests.Session` for automatic JSESSIONID cookie persistence. Added auto-re-login on `SESSION_TIMEOUT` minor code.
 
 ### Challenge 3: Time Zone Handling
 **Solution:** Always use UTC, accept "now" for convenience, parse ISO 8601 with timezone awareness.
@@ -458,17 +455,15 @@ curl -X POST \
 ## Next Steps / Future Enhancements
 
 ### Short Term
-1. **Verify selectors** against actual 2park.nl website
-2. **Add integration tests** with real website
-3. **Add rate limiting** middleware
-4. **Implement logging to file** for production
+1. **Add integration tests** with real API
+2. **Add rate limiting** middleware (done)
+3. **Implement logging to file** for production
 
 ### Medium Term
 1. **Session caching** for performance
 2. **Webhook support** for notifications
 3. **Batch operations** endpoint
 4. **Metrics/monitoring** endpoint
-5. **Health check** with DB connectivity test
 
 ### Long Term
 1. **Database layer** for booking history
@@ -495,7 +490,6 @@ The API is ready for integration into other systems and can be extended with add
 ```bash
 # 1. Setup
 uv sync
-uv run playwright install chromium
 
 # 2. Configure
 cp .env.example .env

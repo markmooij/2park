@@ -13,9 +13,12 @@
 #   data:
 #     license_plate: "51PXPN"
 #     additional_minutes: 60
+#
+# Each API call launches a headless browser that takes 5-25 seconds.
+# The timeout of 120s accounts for worst-case scenarios.
 
 cancel_twopark_booking:
-  url: "http://rasp-pi-4-service.local:8090/api/bookings/{{ license_plate }}/cancel"
+  url: !secret twopark_api_host/api/bookings/{{ license_plate }}/cancel
   method: POST
   headers:
     Authorization: !secret twopark_api_token
@@ -23,7 +26,7 @@ cancel_twopark_booking:
   timeout: 120
 
 extend_twopark_booking:
-  url: "http://rasp-pi-4-service.local:8090/api/bookings/{{ license_plate }}/extend"
+  url: !secret twopark_api_host/api/bookings/{{ license_plate }}/extend
   method: POST
   headers:
     Authorization: !secret twopark_api_token
@@ -32,7 +35,7 @@ extend_twopark_booking:
   timeout: 120
 
 create_twopark_booking:
-  url: "http://rasp-pi-4-service.local:8090/api/bookings"
+  url: !secret twopark_api_host/api/bookings
   method: POST
   headers:
     Authorization: !secret twopark_api_token

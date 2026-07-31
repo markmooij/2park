@@ -1,0 +1,11 @@
+# Home Assistant Binary Sensors for 2Park API
+# Add to configuration.yaml as:
+#   binary_sensor: !include binary_sensors.yaml
+
+- platform: template
+  sensors:
+    twopark_low_balance:
+      friendly_name: "2Park Low Balance"
+      device_class: problem
+      icon_template: "mdi:alert-circle"
+      value_template: "{{ states('sensor.2park_balance') | float(0) < 5.0 }}"

@@ -25,8 +25,8 @@ We've migrated to **Playwright**, which is:
 
 **Before:**
 ```python
-await page.type("#login_email", "markmooij@gmail.com")
-await page.type("#login_password", "u7*2X5Gydm")
+await page.type("#login_email", "your-email@example.com")
+await page.type("#login_password", "your-password")
 ```
 
 **After:**

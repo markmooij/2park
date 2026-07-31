@@ -47,18 +47,18 @@ cards:
   - type: horizontal-stack
     cards:
       - type: entities
-        title: "Balance"
+        title: "€{{ states('sensor.2park_balance') }}"
         show_header_toggle: false
         entities:
           - entity: sensor.2park_balance
-            name: " "
-            icon: mdi:wallet
+            name: Balance
+            icon: mdi:cash
       - type: entities
-        title: "Bookings"
+        title: "{{ states('sensor.2park_bookings_count') | int(0) }} active"
         show_header_toggle: false
         entities:
           - entity: sensor.2park_bookings_count
-            name: " "
+            name: Bookings
             icon: mdi:parking
 
   # ── BOOKING TABLE ─────────────────────────────────────────

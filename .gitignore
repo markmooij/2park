@@ -15,18 +15,10 @@ wheels/
 # Log files
 logs/
 
-# Taskplane runtime artifacts (machine-specific, do not commit)
-.pi/batch-state.json
-.pi/batch-history.json
-.pi/lane-state-*
-.pi/merge-result-*
-.pi/merge-request-*
-.pi/worker-conversation-*
-.pi/orch-logs/
-.pi/orch-abort-signal
-.pi/settings.json
+# Taskplane / pi runtime artifacts (machine-specific, do not commit)
+.pi/
 .worktrees/
-.taskplane-tasks/
+taskplane-tasks/
 
-# Pi project-local packages (if using pi install -l)
-.pi/npm/
+# Test cache
+.pytest_cache/

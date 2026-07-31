@@ -57,14 +57,6 @@ fi
 echo -e "${GREEN}✓${NC} Credentials loaded"
 echo ""
 
-# Check if playwright browsers are installed
-if [ ! -d "$HOME/.cache/ms-playwright/chromium-1200" ]; then
-    echo -e "${YELLOW}⚠${NC} Playwright browsers not installed."
-    echo "Installing Chromium browser..."
-    uv run playwright install chromium
-    echo ""
-fi
-
 # Run the script
 echo "Starting 2Park Checker..."
 echo "================================"

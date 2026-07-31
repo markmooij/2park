@@ -9,7 +9,7 @@ Complete REST API for managing parking bookings on 2park.nl
 - [Base URL](#base-url)
 - [Endpoints](#endpoints)
   - [Health Check](#health-check)
-  - [Scraper Health Check](#scraper-health-check)
+  - [API Health Check](#api-health-check)
   - [Get Account Balance](#get-account-balance)
   - [List Active Bookings](#list-active-bookings)
   - [Create Booking](#create-booking)
@@ -21,7 +21,7 @@ Complete REST API for managing parking bookings on 2park.nl
 
 ## Overview
 
-The 2Park API provides a stateless REST interface for automating parking management on 2park.nl. Each request creates a new browser session, performs the operation, and cleans up resources automatically.
+The 2Park API provides a stateless REST interface for automating parking management on 2park.nl. Each request authenticates directly against the 2Park JSON API via HTTP, performs the operation, and returns the result. No browser is required.
 
 **Key characteristics:**
 - Stateless architecture (no persistent sessions)
@@ -30,6 +30,7 @@ The 2Park API provides a stateless REST interface for automating parking managem
 - All datetimes in ISO 8601 / UTC
 - Rate limiting by client IP
 - Request tracing via `X-Request-ID` header
+- Direct HTTP API access (no browser automation)
 
 ## Authentication
 
@@ -85,13 +86,13 @@ curl http://localhost:8090/health
 ---
 
 
-### Scraper Health Check
+### API Health Check
 
 `GET /health/scraper`
 
-No authentication required. Designed for monitoring systems to detect scraper selector drift.
+No authentication required. Designed for monitoring systems to verify the 2Park JSON API is reachable and credentials are valid.
 
-Performs a live check by logging into the 2Park dashboard and verifying that all critical DOM selectors (tabs, booking cards, action buttons) are present.
+Performs a live check by logging into the 2Park API and verifying connectivity.
 
 ```bash
 curl http://localhost:8090/health/scraper
@@ -100,28 +101,19 @@ curl http://localhost:8090/health/scraper
 ```json
 {
   "status": "ok",
-  "selectors_checked": [
-    {"selector": ".tabs-container", "label": "Tab container", "present": true},
-    {"selector": ".tabText", "label": "Tab text element", "present": true},
-    {"selector": ".parkapp-item", "label": "Booking card item", "present": true},
-    {"selector": ".license-plate.active", "label": "License plate display", "present": true},
-    {"selector": ".extend-context-menu-button", "label": "Extend button", "present": true},
-    {"selector": ".stop-context-menu-button", "label": "Stop/Cancel button", "present": true},
-    {"selector": ".time-container", "label": "Time display container", "present": true},
-    {"selector": ".parking-action-balance", "label": "Balance display", "present": true}
-  ],
-  "missing_selectors": [],
+  "login_ok": true,
+  "product_id": "12345",
   "timestamp": "2026-03-31T13:27:13Z",
-  "total_response_time_ms": 12500.3
+  "total_response_time_ms": 850.3
 }
 ```
 
 **Response statuses:**
 | Status | Meaning |
 |--------|---------|
-| `ok` | All selectors present — scraper is healthy |
-| `degraded` | Some selectors missing — scraper may produce incorrect results |
-| `error` | Could not reach 2Park website or login failed |
+| `ok` | API reachable and login successful |
+| `degraded` | API reachable but login failed (check credentials) |
+| `error` | Could not reach 2Park API at all |
 
 ---
 
@@ -291,9 +283,8 @@ This includes validation errors, authentication errors, 404s, and server errors.
 | `BOOKING_NOT_FOUND` | 404 | No active booking for the given license plate |
 | `BOOKING_CONFLICT` | 409 | Active booking already exists for this plate |
 | `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
-| `TIMEOUT_ERROR` | 504 | Browser operation timed out |
-| `BROWSER_ERROR` | 500 | Browser automation failure |
-| `SCRAPE_ERROR` | 500 | Failed to extract data from 2park.nl |
+| `TIMEOUT_ERROR` | 504 | API request timed out |
+| `SCRAPE_ERROR` | 500 | Failed to process response from 2park.nl |
 | `NO_BALANCE` | 500 | Could not read balance from page |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
@@ -372,7 +363,6 @@ Every response includes:
 
 ```bash
 uv sync
-uv run playwright install chromium
 cp .env.example .env
 nano .env  # Set TWOPARK_EMAIL, TWOPARK_PASSWORD, API_TOKEN
 python api.py
@@ -396,12 +386,12 @@ Once running:
 
 ## Performance
 
-Each API call launches a headless browser, logs in to 2park.nl, and performs the operation. Expect:
+Each API call authenticates directly against the 2Park JSON API via HTTP. Expect:
 
-- **5-15 seconds** per request (depending on 2park.nl responsiveness)
-- **~200MB memory** per concurrent browser instance
+- **<1 second** per request (depending on 2park.nl responsiveness)
+- **~2MB memory** per concurrent request
 
-Set HTTP client timeouts to at least **120 seconds** when calling this API (especially from Home Assistant).
+Set HTTP client timeouts to at least **30 seconds** when calling this API (especially from Home Assistant).
 
 ---
 

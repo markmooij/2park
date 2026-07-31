@@ -62,16 +62,6 @@ fi
 echo -e "${GREEN}✓${NC} All environment variables set"
 echo ""
 
-# Check if playwright browsers are installed
-if [ ! -d "$HOME/.cache/ms-playwright/chromium-1200" ] && [ ! -d "$HOME/.cache/ms-playwright" ]; then
-    echo -e "${YELLOW}⚠${NC} Playwright browsers not found. Installing..."
-    uv run playwright install chromium
-    echo ""
-fi
-
-echo -e "${GREEN}✓${NC} Playwright browsers installed"
-echo ""
-
 # Check if dependencies are installed
 if [ ! -d ".venv" ]; then
     echo -e "${YELLOW}⚠${NC} Virtual environment not found. Installing dependencies..."
